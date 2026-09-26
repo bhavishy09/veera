@@ -1,21 +1,20 @@
 #!/usr/bin/env python3
-"""Generate submission.jsonl — 30 lines, one per canonical test pair.
+"""Generate submission.jsonl — 30 lines, one per canonical test pair across all 5 categories.
 
 Default mode is OFFLINE (grounded fallback composer, deterministic, no quota).
 With `--live` and GEMINI_API_KEYS set, compositions use Gemini Flash.
 
 Output line schema (per brief):
   test_id, body, cta, send_as, suppression_key, rationale
-
-⚠ If the real challenge dataset generator arrives, this script should be
-re-pointed at ITS canonical pairs; the composition path stays identical.
 """
 from __future__ import annotations
 
 import argparse
 import json
 import os
+import subprocess
 import sys
+from pathlib import Path
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, ".."))
@@ -27,14 +26,25 @@ from schemas import CategoryView, CustomerView, MerchantView, TriggerView  # noq
 from store import STORE  # noqa: E402
 
 DATASET = os.path.join(ROOT, "dataset")
+EXPANDED = os.path.join(DATASET, "expanded")
 OUT_PATH = os.path.join(ROOT, "submission.jsonl")
 
 REQUIRED = ("test_id", "body", "cta", "send_as", "suppression_key", "rationale")
 
 
-def load(name):
-    with open(os.path.join(DATASET, name), encoding="utf-8") as fh:
-        return json.load(fh)
+def ensure_dataset():
+    pairs_file = os.path.join(EXPANDED, "test_pairs.json")
+    if not os.path.exists(pairs_file):
+        print("Generating expanded dataset with test_pairs.json...")
+        subprocess.run([
+            sys.executable, os.path.join(DATASET, "generate_dataset.py"),
+            "--seed-dir", DATASET, "--out", EXPANDED
+        ], check=True)
+
+
+def load_json(path):
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 
 def main() -> None:
@@ -50,22 +60,65 @@ def main() -> None:
             print("WARNING: --live requested but no GEMINI_API_KEYS configured; "
                   "falling back to offline compositions.", file=sys.stderr)
 
-    category = load("category_dentistry.json")
-    merchants = {m["merchant_id"]: m for m in load("merchants.json")}
-    customers = {c["customer_id"]: c for c in load("customers.json")}
-    pairs = load("pairs.json")
+    ensure_dataset()
+
+    # Load categories
+    categories = {}
+    cat_dir = os.path.join(DATASET, "categories")
+    for f in os.listdir(cat_dir):
+        if f.endswith(".json"):
+            slug = f.replace(".json", "")
+            categories[slug] = CategoryView(load_json(os.path.join(cat_dir, f)))
+
+    # Load test pairs
+    pairs_data = load_json(os.path.join(EXPANDED, "test_pairs.json"))
+    pairs = pairs_data["pairs"][:30]
 
     STORE.reset()
-    cat = CategoryView(category)
-
     lines = []
+
     for pair in pairs:
         mid = pair["merchant_id"]
-        merch = MerchantView(merchants[mid])
-        cust = CustomerView(customers[pair["customer_id"]]) if pair.get("customer_id") else None
-        trig = TriggerView(pair["trigger_payload"], pair["trigger_id"])
+        tid = pair["trigger_id"]
+        cid = pair.get("customer_id")
+
+        # Load merchant
+        m_path = os.path.join(EXPANDED, "merchants", f"{mid}.json")
+        if os.path.exists(m_path):
+            m_raw = load_json(m_path)
+        else:
+            seeds = load_json(os.path.join(DATASET, "merchants_seed.json"))["merchants"]
+            m_raw = next(m for m in seeds if m["merchant_id"] == mid)
+
+        merch = MerchantView(m_raw)
+        cat_slug = merch.category_slug or m_raw.get("category_slug", "dentists")
+        cat = categories.get(cat_slug, next(iter(categories.values())))
+
+        # Load customer
+        cust = None
+        if cid:
+            c_path = os.path.join(EXPANDED, "customers", f"{cid}.json")
+            if os.path.exists(c_path):
+                c_raw = load_json(c_path)
+            else:
+                c_seeds = load_json(os.path.join(DATASET, "customers_seed.json"))["customers"]
+                c_raw = next((c for c in c_seeds if c["customer_id"] == cid), None)
+            if c_raw:
+                cust = CustomerView(c_raw)
+
+        # Load trigger
+        t_path = os.path.join(EXPANDED, "triggers", f"{tid}.json")
+        if os.path.exists(t_path):
+            t_raw = load_json(t_path)
+        else:
+            t_seeds = load_json(os.path.join(DATASET, "triggers_seed.json"))["triggers"]
+            t_raw = next(t for t in t_seeds if t["id"] == tid)
+
+        trig = TriggerView(t_raw, tid)
+
         comp, _source = bot.compose(cat, merch, trig, cust, mid)
-        send_as = "merchant" if cust is not None else "platform"
+        send_as = "merchant" if (cust is not None and trig.customer_id) else "platform"
+
         lines.append({
             "test_id": pair["test_id"],
             "body": comp["body"],

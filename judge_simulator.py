@@ -392,12 +392,35 @@ class DatasetLoader:
             ]:
                 path = self.dataset_dir / name
                 if path.exists():
-                    data = json.load(open(path))
+                    data = json.load(open(path, encoding="utf-8"))
                     items = data.get(container, data.get(container.rstrip("s"), []))
                     storage = getattr(self, container)
                     for item in items:
                         if key in item:
                             storage[item[key]] = item
+
+            # Also load expanded individual JSONs if present across all categories
+            search_dirs = [self.dataset_dir]
+            if (self.dataset_dir / "expanded").is_dir():
+                search_dirs.append(self.dataset_dir / "expanded")
+
+            for base in search_dirs:
+                for folder, container, key in [
+                    ("merchants", "merchants", "merchant_id"),
+                    ("customers", "customers", "customer_id"),
+                    ("triggers", "triggers", "id")
+                ]:
+                    fdir = base / folder
+                    if fdir.is_dir():
+                        storage = getattr(self, container)
+                        for f in fdir.glob("*.json"):
+                            try:
+                                d = json.load(open(f, encoding="utf-8"))
+                                k = d.get(key) or d.get("id") or d.get("customer_id") or d.get("merchant_id")
+                                if k:
+                                    storage[k] = d
+                            except Exception:
+                                pass
             return True
         except Exception as e:
             print_fail(f"Dataset load error: {e}")

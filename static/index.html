@@ -148,7 +148,7 @@
     .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* Preset Chips */
+    /* Presets Bar */
     .presets-bar {
       margin-bottom: 1.5rem;
       background: var(--bg-surface);
@@ -156,17 +156,52 @@
       border-radius: 14px;
       padding: 1rem 1.25rem;
     }
+    .presets-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
     .presets-title {
       font-size: 0.78rem;
-      font-weight: 600;
-      color: var(--text-dim);
+      font-weight: 700;
+      color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      margin-bottom: 0.65rem;
       display: flex;
       align-items: center;
       gap: 0.4rem;
     }
+    .category-filter-bar {
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+    }
+    .cat-filter-pill {
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: 9999px;
+      padding: 0.3rem 0.75rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: all 0.2s ease;
+    }
+    .cat-filter-pill:hover {
+      color: var(--text-main);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+    .cat-filter-pill.active {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(6, 182, 212, 0.2));
+      border-color: var(--primary);
+      color: #6ee7b7;
+      box-shadow: 0 0 10px var(--primary-glow);
+    }
+
     .preset-chips {
       display: flex;
       gap: 0.6rem;
@@ -176,7 +211,7 @@
     .preset-chip {
       background: var(--bg-surface-elevated);
       border: 1px solid var(--border-subtle);
-      padding: 0.5rem 0.9rem;
+      padding: 0.6rem 0.95rem;
       border-radius: 10px;
       font-size: 0.8rem;
       color: var(--text-main);
@@ -186,13 +221,24 @@
       display: flex;
       flex-direction: column;
       text-align: left;
+      min-width: 250px;
     }
-    .preset-chip span:first-child { font-weight: 600; color: #fff; }
-    .preset-chip span:last-child { font-size: 0.7rem; color: var(--text-muted); }
     .preset-chip:hover {
       border-color: var(--primary);
       transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.18);
+    }
+    .preset-chip .chip-title {
+      font-weight: 600;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .preset-chip .chip-sub {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 0.2rem;
     }
 
     /* Simulator 2-Column Grid */
@@ -235,7 +281,9 @@
       margin-bottom: 1.1rem;
     }
     .form-group label {
-      display: block;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       font-size: 0.78rem;
       font-weight: 600;
       color: var(--text-muted);
@@ -294,6 +342,10 @@
       background: rgba(6, 182, 212, 0.15);
       color: #67e8f9;
     }
+    .badge-pill.purple {
+      background: rgba(139, 92, 246, 0.15);
+      color: #c4b5fd;
+    }
 
     /* Execute Button */
     .btn-execute {
@@ -348,7 +400,7 @@
     }
     .wa-header {
       background: #1f2c34;
-      padding: 0.65rem 1rem;
+      padding: 0.75rem 1rem;
       display: flex;
       align-items: center;
       gap: 0.75rem;
@@ -358,7 +410,7 @@
       width: 38px;
       height: 38px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #059669, #0d9488);
+      background: linear-gradient(135deg, #059669, #10b981);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -366,113 +418,101 @@
       color: #fff;
       font-size: 0.9rem;
     }
-    .wa-info h3 {
+    .wa-info h4 {
       font-size: 0.92rem;
-      color: #e9edef;
       font-weight: 600;
+      color: #e9edef;
       display: flex;
       align-items: center;
       gap: 0.35rem;
-    }
-    .wa-check {
-      color: #00a884;
-      font-size: 0.85rem;
     }
     .wa-info p {
       font-size: 0.72rem;
       color: #8696a0;
     }
+    .wa-check { color: #53bdeb; font-size: 0.85rem; }
 
     .wa-body {
       background-color: #0b141a;
-      background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
-      background-size: 16px 16px;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(31, 44, 52, 0.4) 0%, transparent 20%),
+        radial-gradient(circle at 90% 80%, rgba(31, 44, 52, 0.4) 0%, transparent 20%);
+      padding: 1.25rem 1rem 1.75rem;
       min-height: 280px;
-      padding: 1.25rem 1rem;
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
     }
     .wa-date-pill {
-      align-self: center;
       background: #182229;
       color: #8696a0;
-      font-size: 0.7rem;
+      font-size: 0.68rem;
+      font-weight: 500;
       padding: 0.25rem 0.65rem;
-      border-radius: 8px;
+      border-radius: 6px;
+      align-self: center;
       margin-bottom: 1rem;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.3);
     }
+
     .wa-bubble {
       background: #005c4b;
       color: #e9edef;
-      padding: 0.85rem 1rem;
-      border-radius: 14px 14px 2px 14px;
+      padding: 0.75rem 0.85rem;
+      border-radius: 10px;
+      border-top-left-radius: 0;
       max-width: 90%;
-      align-self: flex-end;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.4);
-      position: relative;
-      font-size: 0.92rem;
+      font-size: 0.88rem;
       line-height: 1.45;
-    }
-    .wa-bubble p {
-      margin-bottom: 0.5rem;
-    }
-    .wa-bubble .wa-time {
-      float: right;
-      font-size: 0.65rem;
-      color: rgba(233, 237, 239, 0.6);
-      margin-left: 0.75rem;
-      margin-top: 0.2rem;
-      display: flex;
-      align-items: center;
-      gap: 0.2rem;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+      position: relative;
     }
     .wa-cta-box {
       margin-top: 0.65rem;
-      padding-top: 0.65rem;
-      border-top: 1px solid rgba(255,255,255,0.12);
+      border-top: 1px solid rgba(255,255,255,0.15);
+      padding-top: 0.55rem;
+      text-align: center;
     }
     .wa-cta-btn {
-      background: rgba(255,255,255,0.12);
-      border: 1px solid rgba(255,255,255,0.18);
-      border-radius: 8px;
-      padding: 0.45rem 0.75rem;
-      font-size: 0.8rem;
+      color: #53bdeb;
       font-weight: 600;
-      color: #25d366;
-      display: block;
-      text-align: center;
-      transition: background 0.2s ease;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .wa-time {
+      font-size: 0.65rem;
+      color: #8696a0;
+      text-align: right;
+      margin-top: 0.25rem;
     }
 
-    /* Meta & Rationale Box */
+    /* Meta Inspection Box */
     .meta-box {
-      margin-top: 1.25rem;
       background: var(--bg-surface-elevated);
       border: 1px solid var(--border-subtle);
       border-radius: 12px;
       padding: 1rem;
+      margin-top: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+      font-size: 0.8rem;
     }
     .meta-row {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      padding: 0.35rem 0;
-      font-size: 0.8rem;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
+      gap: 1rem;
     }
-    .meta-row:last-child { border-bottom: none; }
-    .meta-label { color: var(--text-dim); }
-    .meta-val { font-family: var(--font-mono); color: var(--text-main); }
+    .meta-label { color: var(--text-dim); font-weight: 500; }
+    .meta-val { color: var(--text-main); font-family: var(--font-mono); font-weight: 500; text-align: right; word-break: break-all; }
 
-    /* Judge Score Card */
+    /* Judge Scorecard Section */
     .judge-card {
-      margin-top: 1.25rem;
-      background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%);
-      border: 1px solid rgba(139, 92, 246, 0.3);
-      border-radius: 16px;
+      margin-top: 1.5rem;
+      background: rgba(30, 41, 59, 0.4);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
       padding: 1.25rem;
-      box-shadow: 0 8px 24px rgba(139, 92, 246, 0.12);
     }
     .judge-header {
       display: flex;
@@ -481,22 +521,24 @@
       margin-bottom: 1rem;
     }
     .btn-judge {
-      background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
-      color: #fff;
+      background: linear-gradient(135deg, #8b5cf6, #6366f1);
       border: none;
-      padding: 0.65rem 1.2rem;
-      border-radius: 10px;
-      font-size: 0.85rem;
+      color: #fff;
+      font-family: var(--font-display);
       font-weight: 600;
+      font-size: 0.85rem;
+      padding: 0.55rem 1.1rem;
+      border-radius: 8px;
       cursor: pointer;
       transition: all 0.2s ease;
       display: flex;
       align-items: center;
-      gap: 0.45rem;
+      gap: 0.4rem;
+      box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
     }
     .btn-judge:hover {
-      box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
-      transform: translateY(-1px);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5);
     }
     .btn-judge:disabled { opacity: 0.5; cursor: not-allowed; }
 
@@ -617,7 +659,7 @@
       <div class="logo-badge">V</div>
       <div class="logo-title">
         <h1>Vera AI <span>Operations Console</span></h1>
-        <p>magicpin merchant engagement bot • Production System</p>
+        <p>magicpin merchant engagement bot • Multi-Category Production Engine</p>
       </div>
     </div>
 
@@ -641,9 +683,20 @@
     <!-- TAB 1: SIMULATOR -->
     <div id="tab-simulator" class="tab-content active">
 
-      <!-- Preset Scenarios Bar -->
+      <!-- Preset Scenarios Bar with Category Pills -->
       <div class="presets-bar">
-        <div class="presets-title">⚡ Quick Scenarios (Click to Load Real Database Contexts)</div>
+        <div class="presets-header-row">
+          <div class="presets-title">⚡ Quick Scenarios (10 Presets Across All 5 Categories)</div>
+          <!-- Category Filter Pills -->
+          <div class="category-filter-bar" id="category-pills">
+            <div class="cat-filter-pill active" onclick="filterByCategory('all')">🌟 All (10)</div>
+            <div class="cat-filter-pill" onclick="filterByCategory('dentists')">🦷 Dentists</div>
+            <div class="cat-filter-pill" onclick="filterByCategory('salons')">💇‍♀️ Salons</div>
+            <div class="cat-filter-pill" onclick="filterByCategory('restaurants')">🍛 Restaurants</div>
+            <div class="cat-filter-pill" onclick="filterByCategory('gyms')">🏋️‍♂️ Gyms</div>
+            <div class="cat-filter-pill" onclick="filterByCategory('pharmacies')">💊 Pharmacies</div>
+          </div>
+        </div>
         <div class="preset-chips" id="presets-container">
           <!-- Populated dynamically via JS -->
         </div>
@@ -654,13 +707,13 @@
         <div class="glass-card">
           <div class="card-header">
             <h2>📥 Context Ingestion & Trigger Setup</h2>
-            <span class="badge-pill accent">Live Layer 1 & 2 Engine</span>
+            <span class="badge-pill accent">All 5 Verticals Linked</span>
           </div>
 
           <!-- Category Selector -->
           <div class="form-group">
-            <label>1. Category Context</label>
-            <select id="sel-category" class="form-control" onchange="onCategoryChange()">
+            <label>1. Category Context <span id="cat-badge" class="badge-pill purple">5 Verticals</span></label>
+            <select id="sel-category" class="form-control" onchange="onCategorySelectChange()">
               <!-- Options populated via JS -->
             </select>
             <div id="cat-preview" class="context-preview">
@@ -671,7 +724,7 @@
 
           <!-- Merchant Selector -->
           <div class="form-group">
-            <label>2. Merchant Context</label>
+            <label>2. Merchant Context <span id="merchant-count-badge" class="badge-pill accent">50 Merchants</span></label>
             <select id="sel-merchant" class="form-control" onchange="onMerchantChange()">
               <!-- Options populated via JS -->
             </select>
@@ -682,7 +735,7 @@
 
           <!-- Customer Selector (Optional) -->
           <div class="form-group">
-            <label>3. Customer Target (Optional)</label>
+            <label>3. Customer Target (Optional) <span id="customer-count-badge" class="badge-pill">Per Merchant</span></label>
             <select id="sel-customer" class="form-control">
               <!-- Options populated via JS -->
             </select>
@@ -690,7 +743,7 @@
 
           <!-- Trigger Selector -->
           <div class="form-group">
-            <label>4. Event / Trigger</label>
+            <label>4. Event / Trigger <span id="trigger-count-badge" class="badge-pill success">100 Triggers</span></label>
             <select id="sel-trigger" class="form-control" onchange="onTriggerChange()">
               <!-- Options populated via JS -->
             </select>
@@ -699,22 +752,28 @@
             </div>
           </div>
 
-          <!-- Action Button -->
+          <!-- Execute Button -->
           <button id="btn-run-sim" class="btn-execute" onclick="runSimulation()">
             <span>🚀 Run Event & Generate WhatsApp Message</span>
           </button>
         </div>
 
-        <!-- RIGHT: WHATSAPP PREVIEW & LLM JUDGE -->
-        <div>
-          <!-- WhatsApp Device Mockup -->
+        <!-- RIGHT: OUTPUT PHONE PREVIEW -->
+        <div class="glass-card">
+          <div class="card-header">
+            <h2>📱 Live WhatsApp Delivery Preview</h2>
+            <span class="badge-pill success">Single-CTA Compliant</span>
+          </div>
+
+          <!-- Realistic WhatsApp Mockup -->
           <div class="phone-container">
             <div class="phone-notch"></div>
+            
             <div class="wa-header">
               <div class="wa-avatar" id="wa-avatar">DM</div>
               <div class="wa-info">
-                <h3 id="wa-contact-name">Dr. Meera's Dental Clinic <span class="wa-check">✓</span></h3>
-                <p>magicpin Verified Business</p>
+                <h4 id="wa-contact-name">Dr. Meera's Dental Clinic <span class="wa-check">✓</span></h4>
+                <p>magicpin Verified Merchant</p>
               </div>
             </div>
 
@@ -722,7 +781,7 @@
               <div class="wa-date-pill">TODAY</div>
               
               <div class="wa-bubble">
-                <p id="wa-body-text">Select an event on the left and click "Run Event" to generate a live, context-grounded WhatsApp message preview.</p>
+                <p id="wa-body-text">Select any event scenario above and click "Run Event" to generate a live, context-grounded WhatsApp message preview.</p>
                 <div class="wa-cta-box" id="wa-cta-container" style="display: none;">
                   <span class="wa-cta-btn" id="wa-cta-text">Reply YES</span>
                 </div>
@@ -793,10 +852,12 @@
       <div class="glass-card">
         <div class="card-header">
           <h2>🏆 Official Challenge Benchmark Results</h2>
-          <button class="nav-btn" onclick="loadBenchmarkResults()">🔄 Refresh Results</button>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="nav-btn" onclick="loadBenchmarkResults()">🔄 Refresh Results</button>
+          </div>
         </div>
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
-          Directly parsed from <code>results.json</code> generated during automated testing of all canonical pairs.
+          Results across all 30 canonical test cases across all 5 verticals: <strong>Restaurants (7)</strong>, <strong>Dentists (7)</strong>, <strong>Salons (6)</strong>, <strong>Gyms (5)</strong>, and <strong>Pharmacies (5)</strong>.
         </p>
         <div id="benchmark-summary" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
           <!-- Summary cards populated via JS -->
@@ -832,7 +893,7 @@
             <div class="step-num">1</div>
             <div class="step-body">
               <h3>Ingestion & Data-Driven Context Hub (`/v1/context`)</h3>
-              <p>Vera is 100% data-driven. It operates on 4 explicit context streams: <strong>Category</strong> (tone, style, taboos, peer benchmarks), <strong>Merchant</strong> (stats, active offers, cohort sizes), <strong>Customer</strong> (visit history, preferences, consent), and <strong>Triggers</strong> (internal dips, external compliance, research digests). Absolutely zero category logic is hardcoded.</p>
+              <p>Vera is 100% data-driven. It operates on 4 explicit context streams: <strong>Category</strong> (tone, style, taboos, peer benchmarks for 5 verticals), <strong>Merchant</strong> (stats, active offers, cohort sizes), <strong>Customer</strong> (visit history, preferences, consent), and <strong>Triggers</strong> (internal dips, external compliance, research digests). Absolutely zero category logic is hardcoded.</p>
             </div>
           </div>
 
@@ -881,6 +942,7 @@
   <script>
     let DATASET = null;
     let LAST_SIM_RESULT = null;
+    let ACTIVE_CAT_FILTER = 'all';
 
     // Tab Switching
     function switchTab(tabId) {
@@ -893,73 +955,74 @@
       if (tabId === 'system') checkHealth();
     }
 
+    // Filter Quick Presets by Category
+    function filterByCategory(catSlug) {
+      ACTIVE_CAT_FILTER = catSlug;
+      document.querySelectorAll('.cat-filter-pill').forEach(pill => {
+        pill.classList.remove('active');
+      });
+      if (event && event.currentTarget) {
+        event.currentTarget.classList.add('active');
+      }
+
+      renderPresets();
+
+      if (catSlug !== 'all') {
+        const catSelect = document.getElementById('sel-category');
+        catSelect.value = catSlug;
+        onCategorySelectChange(false);
+      } else {
+        renderMerchants();
+        renderTriggers();
+      }
+    }
+
+    // Render Preset Chips
+    function renderPresets() {
+      const presetsCont = document.getElementById('presets-container');
+      presetsCont.innerHTML = '';
+      const list = (DATASET.presets || []).filter(p => {
+        if (ACTIVE_CAT_FILTER === 'all') return true;
+        return p.category_slug === ACTIVE_CAT_FILTER;
+      });
+
+      list.forEach(p => {
+        const chip = document.createElement('div');
+        chip.className = 'preset-chip';
+        chip.innerHTML = `
+          <div class="chip-title">${p.title}</div>
+          <div class="chip-sub">${p.subtitle}</div>
+        `;
+        chip.onclick = () => loadPreset(p);
+        presetsCont.appendChild(chip);
+      });
+    }
+
     // Load initial dataset from backend
     async function loadDataset() {
       try {
         const res = await fetch('/api/dataset');
         DATASET = await res.json();
-        
-        // Populate Presets
-        const presetsCont = document.getElementById('presets-container');
-        presetsCont.innerHTML = '';
-        DATASET.presets.forEach(p => {
-          const chip = document.createElement('div');
-          chip.className = 'preset-chip';
-          chip.innerHTML = `<span>${p.title}</span><span>${p.subtitle}</span>`;
-          chip.onclick = () => loadPreset(p);
-          presetsCont.appendChild(chip);
-        });
 
-        // Populate Categories
+        // 1. Populate Category Pills and Select
         const catSelect = document.getElementById('sel-category');
         catSelect.innerHTML = '';
-        DATASET.categories.forEach(c => {
+        (DATASET.categories || []).forEach(c => {
           const opt = document.createElement('option');
           opt.value = c.slug;
-          opt.textContent = `${c.name} (${c.slug})`;
+          opt.textContent = `${c.icon || '🏪'} ${c.name} (${c.slug})`;
           catSelect.appendChild(opt);
         });
 
-        // Populate Merchants
-        const merchSelect = document.getElementById('sel-merchant');
-        merchSelect.innerHTML = '';
-        DATASET.merchants.forEach(m => {
-          const opt = document.createElement('option');
-          opt.value = m.merchant_id || m.id;
-          const name = (m.identity || {}).name || m.name || m.business_name || m.merchant_id;
-          const city = (m.identity || {}).city || m.city || '';
-          opt.textContent = `${name}${city ? ' • ' + city : ''}`;
-          merchSelect.appendChild(opt);
-        });
+        // 2. Render Presets
+        renderPresets();
 
-        // Populate Customers
-        const custSelect = document.getElementById('sel-customer');
-        custSelect.innerHTML = '<option value="">None (Platform-to-Merchant)</option>';
-        DATASET.customers.forEach(c => {
-          const opt = document.createElement('option');
-          opt.value = c.customer_id || c.id;
-          const name = (c.identity || {}).name || c.customer_id;
-          opt.textContent = `Customer: ${name} (${c.customer_id})`;
-          custSelect.appendChild(opt);
-        });
+        // 3. Render Merchants & Triggers
+        renderMerchants();
+        renderTriggers();
 
-        // Populate Triggers
-        const trigSelect = document.getElementById('sel-trigger');
-        trigSelect.innerHTML = '';
-        DATASET.triggers.forEach(t => {
-          const opt = document.createElement('option');
-          opt.value = t.id;
-          opt.textContent = `${t.id} [${t.kind || t.type}]`;
-          trigSelect.appendChild(opt);
-        });
-
-        // Trigger updates
-        onMerchantChange();
-        onCategoryChange();
-        onTriggerChange();
-
-        // Auto load first preset
-        if (DATASET.presets.length > 0) {
+        // 4. Populate first preset
+        if (DATASET.presets && DATASET.presets.length > 0) {
           loadPreset(DATASET.presets[0]);
         }
       } catch (err) {
@@ -967,53 +1030,168 @@
       }
     }
 
+    // Load Specific Preset
     function loadPreset(preset) {
-      document.getElementById('sel-merchant').value = preset.merchant_id;
       document.getElementById('sel-category').value = preset.category_slug;
+      onCategorySelectChange(false);
+
+      document.getElementById('sel-merchant').value = preset.merchant_id;
+      onMerchantChange(false);
+
       document.getElementById('sel-customer').value = preset.customer_id || '';
       document.getElementById('sel-trigger').value = preset.trigger_id;
 
-      onCategoryChange();
-      onMerchantChange(false);
       onTriggerChange();
     }
 
-    function onCategoryChange() {
+    // When Category changes in Dropdown
+    function onCategorySelectChange(syncPill = true) {
       const slug = document.getElementById('sel-category').value;
+      if (syncPill) {
+        ACTIVE_CAT_FILTER = slug;
+        document.querySelectorAll('.cat-filter-pill').forEach(pill => {
+          pill.classList.remove('active');
+          if (pill.getAttribute('onclick') && pill.getAttribute('onclick').includes(slug)) {
+            pill.classList.add('active');
+          }
+        });
+        renderPresets();
+      }
+
       const cat = (DATASET.categories || []).find(c => c.slug === slug);
       if (cat) {
-        document.getElementById('cat-tone-preview').textContent = `Tone: ${cat.tone || 'Clinical, direct'}`;
+        document.getElementById('cat-tone-preview').textContent = `Tone: ${cat.tone || 'Professional, concise'}`;
         const taboosCont = document.getElementById('cat-taboos-preview');
         taboosCont.innerHTML = '<strong>Taboos:</strong> ' + (cat.taboos || []).map(t => `<span class="badge-pill taboo">${t}</span>`).join(' ');
       }
+
+      // Re-filter merchants and triggers
+      renderMerchants();
+      renderTriggers();
     }
 
+    // Render Merchants dropdown (filtered by selected category)
+    function renderMerchants() {
+      const slug = document.getElementById('sel-category').value;
+      const merchSelect = document.getElementById('sel-merchant');
+      merchSelect.innerHTML = '';
+
+      let merchants = (DATASET.merchants || []);
+      if (slug) {
+        merchants = merchants.filter(m => m.category_slug === slug);
+      }
+
+      document.getElementById('merchant-count-badge').textContent = `${merchants.length} in ${slug || 'All'}`;
+
+      merchants.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.merchant_id || m.id;
+        const name = (m.identity || {}).name || m.name || m.business_name || m.merchant_id;
+        const city = (m.identity || {}).city || m.city || '';
+        const loc = (m.identity || {}).locality || m.locality || '';
+        opt.textContent = `${name} • ${city}${loc ? ' (' + loc + ')' : ''}`;
+        merchSelect.appendChild(opt);
+      });
+
+      if (merchants.length > 0) {
+        merchSelect.selectedIndex = 0;
+        onMerchantChange(false);
+      }
+    }
+
+    // Render Customers for selected merchant
+    function renderCustomers(selectedMid) {
+      const custSelect = document.getElementById('sel-customer');
+      custSelect.innerHTML = '<option value="">None (Platform-to-Merchant Message)</option>';
+
+      const mid = selectedMid || document.getElementById('sel-merchant').value;
+      const customers = (DATASET.customers || []).filter(c => c.merchant_id === mid);
+
+      document.getElementById('customer-count-badge').textContent = `${customers.length} for Merchant`;
+
+      customers.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.customer_id || c.id;
+        const name = (c.identity || {}).name || c.customer_id;
+        const visits = (c.relationship || {}).visits_total || 1;
+        opt.textContent = `👤 ${name} [${c.customer_id}] • ${visits} visits`;
+        custSelect.appendChild(opt);
+      });
+    }
+
+    // Render Triggers (filtered by selected category or merchant)
+    function renderTriggers() {
+      const slug = document.getElementById('sel-category').value;
+      const mid = document.getElementById('sel-merchant').value;
+      const trigSelect = document.getElementById('sel-trigger');
+      trigSelect.innerHTML = '';
+
+      const triggers = (DATASET.triggers || []).filter(t => {
+        if (t.merchant_id && t.merchant_id === mid) return true;
+        if (t.category_slug && t.category_slug === slug) return true;
+        if ((t.payload || {}).category === slug) return true;
+        return false;
+      });
+
+      // If no strictly matching triggers found, show all triggers for that category or overall
+      const listToDisplay = triggers.length > 0 ? triggers : (DATASET.triggers || []);
+
+      listToDisplay.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id;
+        const kind = t.kind || t.type;
+        const scope = t.scope || (t.customer_id ? 'customer' : 'merchant');
+        opt.textContent = `[${scope.toUpperCase()}] ${t.id} (${kind})`;
+        trigSelect.appendChild(opt);
+      });
+
+      if (listToDisplay.length > 0) {
+        trigSelect.selectedIndex = 0;
+        onTriggerChange();
+      }
+    }
+
+    // When Merchant selection changes
     function onMerchantChange(syncCategory = true) {
       const mid = document.getElementById('sel-merchant').value;
       const merch = (DATASET.merchants || []).find(m => (m.merchant_id || m.id) === mid);
       if (merch) {
         if (syncCategory && merch.category_slug) {
-          document.getElementById('sel-category').value = merch.category_slug;
-          onCategoryChange();
+          const currentCat = document.getElementById('sel-category').value;
+          if (currentCat !== merch.category_slug) {
+            document.getElementById('sel-category').value = merch.category_slug;
+            onCategorySelectChange(false);
+          }
         }
         const loc = (merch.identity || {}).locality || (merch.profile || {}).locality || merch.locality || '';
         const city = (merch.identity || {}).city || (merch.profile || {}).city || merch.city || '';
         const name = (merch.identity || {}).name || merch.name || merch.business_name || mid;
-        document.getElementById('merch-details-preview').textContent = `${name} | ${loc}${city ? ', ' + city : ''} | Category: ${merch.category_slug}`;
+        const owner = (merch.identity || {}).owner_first_name || '';
+        const views = (merch.performance || {}).views || '—';
+        const calls = (merch.performance || {}).calls || '—';
+
+        document.getElementById('merch-details-preview').textContent = 
+          `${name} | Owner: ${owner || 'N/A'} | Location: ${loc}${city ? ', ' + city : ''} | Stats: ${views} views, ${calls} calls`;
+        
         document.getElementById('wa-contact-name').innerHTML = `${name} <span class="wa-check">✓</span>`;
         document.getElementById('wa-avatar').textContent = name.substring(0, 2).toUpperCase();
+
+        renderCustomers(mid);
       }
     }
 
+    // When Trigger selection changes
     function onTriggerChange() {
       const tid = document.getElementById('sel-trigger').value;
       const trig = (DATASET.triggers || []).find(t => t.id === tid);
       if (trig) {
-        document.getElementById('trigger-details-preview').textContent = `Type: ${trig.kind || trig.type} | Urgency: ${trig.urgency} | Target: ${trig.scope}`;
+        const payloadStr = JSON.stringify(trig.payload || {}).substring(0, 80);
+        document.getElementById('trigger-details-preview').textContent = 
+          `Kind: ${trig.kind || trig.type} | Urgency: ${trig.urgency} | Scope: ${trig.scope} | Payload: ${payloadStr}...`;
       }
     }
 
-    // Run Simulation
+    // Run Live Simulation
     async function runSimulation() {
       const btn = document.getElementById('btn-run-sim');
       btn.disabled = true;
@@ -1061,7 +1239,7 @@
       }
     }
 
-    // Run Judge
+    // Run LLM Judge
     async function runJudge() {
       if (!LAST_SIM_RESULT || !LAST_SIM_RESULT.action) return;
 
@@ -1134,7 +1312,7 @@
       }
     }
 
-    // Load Benchmark
+    // Load Benchmark Results
     async function loadBenchmarkResults() {
       try {
         const res = await fetch('/api/results');
@@ -1143,7 +1321,7 @@
         tbody.innerHTML = '';
 
         if (!data.results || data.results.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-dim);">No benchmark runs saved yet.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-dim);">No benchmark runs saved yet. Run `python3 judge_simulator.py` to populate.</td></tr>';
           return;
         }
 
