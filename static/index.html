@@ -926,7 +926,9 @@
         DATASET.merchants.forEach(m => {
           const opt = document.createElement('option');
           opt.value = m.merchant_id || m.id;
-          opt.textContent = `${m.name || m.business_name} • ${m.city || ''}`;
+          const name = (m.identity || {}).name || m.name || m.business_name || m.merchant_id;
+          const city = (m.identity || {}).city || m.city || '';
+          opt.textContent = `${name}${city ? ' • ' + city : ''}`;
           merchSelect.appendChild(opt);
         });
 
@@ -952,8 +954,8 @@
         });
 
         // Trigger updates
-        onCategoryChange();
         onMerchantChange();
+        onCategoryChange();
         onTriggerChange();
 
         // Auto load first preset
@@ -966,13 +968,13 @@
     }
 
     function loadPreset(preset) {
-      document.getElementById('sel-category').value = preset.category_slug;
       document.getElementById('sel-merchant').value = preset.merchant_id;
+      document.getElementById('sel-category').value = preset.category_slug;
       document.getElementById('sel-customer').value = preset.customer_id || '';
       document.getElementById('sel-trigger').value = preset.trigger_id;
 
       onCategoryChange();
-      onMerchantChange();
+      onMerchantChange(false);
       onTriggerChange();
     }
 
@@ -986,14 +988,18 @@
       }
     }
 
-    function onMerchantChange() {
+    function onMerchantChange(syncCategory = true) {
       const mid = document.getElementById('sel-merchant').value;
       const merch = (DATASET.merchants || []).find(m => (m.merchant_id || m.id) === mid);
       if (merch) {
-        const loc = (merch.profile || {}).locality || merch.locality || '';
-        const city = (merch.profile || {}).city || merch.city || '';
-        const name = merch.name || merch.business_name || mid;
-        document.getElementById('merch-details-preview').textContent = `${name} | ${loc}, ${city} | Category: ${merch.category_slug}`;
+        if (syncCategory && merch.category_slug) {
+          document.getElementById('sel-category').value = merch.category_slug;
+          onCategoryChange();
+        }
+        const loc = (merch.identity || {}).locality || (merch.profile || {}).locality || merch.locality || '';
+        const city = (merch.identity || {}).city || (merch.profile || {}).city || merch.city || '';
+        const name = (merch.identity || {}).name || merch.name || merch.business_name || mid;
+        document.getElementById('merch-details-preview').textContent = `${name} | ${loc}${city ? ', ' + city : ''} | Category: ${merch.category_slug}`;
         document.getElementById('wa-contact-name').innerHTML = `${name} <span class="wa-check">✓</span>`;
         document.getElementById('wa-avatar').textContent = name.substring(0, 2).toUpperCase();
       }
@@ -1076,6 +1082,10 @@
           }),
         });
         const scoreData = await res.json();
+        if (!res.ok || scoreData.error) {
+          alert('Judge error: ' + (scoreData.error || res.statusText));
+          return;
+        }
 
         // Render Scorecard
         document.getElementById('judge-results').style.display = 'block';

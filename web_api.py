@@ -212,8 +212,8 @@ class JudgeRequest(BaseModel):
 def judge_action(req: JudgeRequest):
     """Run the official 5-dimension LLM judge on any action."""
     try:
-        from judge_simulator import Dataset, LLMScorer, create_provider
-        dataset = Dataset(ROOT / "dataset")
+        from judge_simulator import DatasetLoader, LLMScorer, create_provider
+        dataset = DatasetLoader(ROOT / "dataset")
         dataset.load()
         llm = create_provider()
         scorer = LLMScorer(llm, dataset)
