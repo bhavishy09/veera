@@ -170,8 +170,10 @@ class CategoryView:
         if isinstance(self.voice, str):
             self.voice = {"tone": self.voice}
         self.tone: str = str(_pick(self.voice if isinstance(self.voice, dict) else {}, "tone", "style") or self.voice or "warm, professional, concise")
-        self.style_notes: str = str(_pick(self.voice if isinstance(self.voice, dict) else {}, "style_notes", "notes", "guidelines") or "")
+        self.style_notes: str = str(_pick(self.voice if isinstance(self.voice, dict) else {}, "style_notes", "notes", "guidelines", "register") or "")
         taboos = _pick(self.raw, "taboos", "taboo", "avoid", "avoid_list", "donts", "forbidden")
+        if not taboos and isinstance(self.voice, dict):
+            taboos = _pick(self.voice, "vocab_taboo", "taboos", "taboo")
         self.taboos: list[str] = [str(t) for t in taboos] if isinstance(taboos, list) else ([str(taboos)] if taboos else [])
         offers = _pick(self.raw, "offer_catalog", "offers", "offer", "campaigns", "promos")
         self.offers: list[dict] = [o for o in offers if isinstance(o, dict)] if isinstance(offers, list) else []
@@ -180,9 +182,7 @@ class CategoryView:
         self.peer_stats: dict = _pick(self.raw, "peer_stats", "peerstats", "benchmarks", "category_stats") or {}
         if not isinstance(self.peer_stats, dict):
             self.peer_stats = {}
-        self.digest: dict = _pick(self.raw, "digest", "digest_config", "digest_settings") or {}
-        if not isinstance(self.digest, dict):
-            self.digest = {}
+        self.digest: Any = _pick(self.raw, "digest", "digest_config", "digest_settings") or {}
         self.seasonal: list = _pick(self.raw, "seasonal_beats", "seasonal", "seasons") or []
         if not isinstance(self.seasonal, list):
             self.seasonal = []
@@ -192,7 +192,7 @@ class CategoryView:
             self.cta_preferences = [str(c) for c in cta_pref]
         elif isinstance(cta_pref, str):
             self.cta_preferences = [cta_pref]
-        self.name: str = str(_pick(self.raw, "category", "vertical", "name", "category_name") or "this category")
+        self.name: str = str(_pick(self.raw, "slug", "display_name", "category", "vertical", "name", "category_name") or "this category")
 
     def taboo_hits(self, text: str) -> list[str]:
         t = (text or "").lower()
@@ -200,7 +200,7 @@ class CategoryView:
         for taboo in self.taboos:
             taboo_l = taboo.lower().strip()
             # match on the salient words of the taboo phrase
-            words = [w for w in re.findall(r"[a-z]{4,}", taboo_l) if w not in ("language", "about", "more", "than", "claims", "problems")]
+            words = [w for w in re.findall(r"[a-z]{4,}", taboo_l) if w not in ("language", "about", "more", "than", "claims", "problems", "when", "actually", "applicable")]
             if words and all(w in t for w in words[:2]):
                 hits.append(taboo)
             elif len(words) == 1 and words[0] in t:
@@ -211,20 +211,30 @@ class CategoryView:
 class MerchantView:
     def __init__(self, payload: dict):
         self.raw = payload or {}
-        self.name: str = str(_pick(self.raw, "merchant_name", "shop_name", "business_name", "clinic_name", "name", "store_name") or "the merchant")
+        ident = _pick(self.raw, "identity", "profile", "business")
+        if isinstance(ident, dict):
+            self.name: str = str(_pick(ident, "name", "owner_first_name", "business_name", "clinic_name") or
+                                 _pick(self.raw, "merchant_name", "name", "business_name") or "there")
+        else:
+            self.name = str(_pick(self.raw, "merchant_name", "name", "business_name", "clinic_name") or "there")
         self.id: Optional[str] = _pick(self.raw, "merchant_id", "id", "shop_id", "business_id")
+        self.category_slug: Optional[str] = _pick(self.raw, "category_slug", "category", "vertical")
         stats = _pick(self.raw, "stats", "metrics", "performance", "kpis")
         self.stats: dict = stats if isinstance(stats, dict) else {}
-        self.history: Any = _pick(self.raw, "history", "recent_events", "timeline", "activity")
+        self.history: Any = _pick(self.raw, "history", "recent_events", "timeline", "activity", "conversation_history")
         self.raw_facts = self.raw  # full payload available for grounding
 
 
 class CustomerView:
     def __init__(self, payload: dict):
         self.raw = payload or {}
-        self.name: str = str(_pick(self.raw, "customer_name", "patient_name", "name", "first_name") or "")
+        ident = _pick(self.raw, "identity", "profile")
+        if isinstance(ident, dict):
+            self.name: str = str(_pick(ident, "name", "first_name") or _pick(self.raw, "customer_name", "patient_name", "name") or "")
+        else:
+            self.name = str(_pick(self.raw, "customer_name", "patient_name", "name", "first_name") or "")
         self.id: Optional[str] = _pick(self.raw, "customer_id", "id", "patient_id", "phone")
-        self.history: Any = _pick(self.raw, "history", "visit_history", "last_visit", "recent_activity", "notes")
+        self.history: Any = _pick(self.raw, "history", "visit_history", "last_visit", "relationship", "recent_activity", "notes")
 
 
 class TriggerView:
@@ -234,11 +244,24 @@ class TriggerView:
         ttype = _pick(self.raw, "trigger_type", "type", "kind", "event", "signal_type", "name")
         self.type: str = str(ttype) if ttype else "general"
         reason = _pick(self.raw, "reason", "message", "description", "detail", "details", "why_now", "summary", "note", "text")
-        self.reason: str = str(reason) if reason else self.type.replace("_", " ")
+        if not reason and isinstance(self.raw.get("payload"), dict):
+            parts = [f"{k.replace('_', ' ')}: {v}" for k, v in self.raw["payload"].items() if not isinstance(v, (list, dict))]
+            self.reason = f"{self.type.replace('_', ' ')} — {', '.join(parts)}" if parts else self.type.replace('_', ' ')
+        else:
+            self.reason = str(reason) if reason else self.type.replace('_', ' ')
         self.urgency: Optional[str] = None
         u = _pick(self.raw, "urgency", "priority", "severity", "importance")
-        if u is not None:
+        if isinstance(u, (int, float)):
+            if u >= 4:
+                self.urgency = "high"
+            elif u >= 2:
+                self.urgency = "medium"
+            else:
+                self.urgency = "low"
+        elif u is not None:
             self.urgency = str(u).strip().lower()
+        else:
+            self.urgency = "medium"
         self.expires_at: Optional[float] = _to_epoch(
             _pick(self.raw, "expires_at", "expiry", "valid_until", "deadline", "expires", "end_time"))
         expires_in = _pick(self.raw, "expires_in_hours", "valid_hours", "ttl_hours")
@@ -264,6 +287,7 @@ class TickRequest(BaseModel):
     model_config = {"extra": "ignore"}
     now: Optional[float | str | int] = None
     tick_id: Optional[str] = None
+    available_triggers: Optional[list[str]] = None
 
     @model_validator(mode="before")
     @classmethod
@@ -320,7 +344,7 @@ class ReplyRequest(BaseModel):
 
 def action_dict(body: str, cta: str, suppression_key: str, rationale: str,
                 to: Optional[str], send_as: str, trigger_id: Optional[str] = None,
-                merchant_id: Optional[str] = None) -> dict:
+                merchant_id: Optional[str] = None, customer_id: Optional[str] = None) -> dict:
     d = {
         "type": "send_message",
         "send_as": send_as,
@@ -334,6 +358,8 @@ def action_dict(body: str, cta: str, suppression_key: str, rationale: str,
         d["trigger_id"] = trigger_id
     if merchant_id:
         d["merchant_id"] = merchant_id
+    if customer_id:
+        d["customer_id"] = customer_id
     return d
 
 

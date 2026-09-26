@@ -29,12 +29,12 @@ def _parse_keys() -> list[str]:
 
 GEMINI_API_KEYS: list[str] = _parse_keys()
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-COMPOSER_TIMEOUT_S = float(os.getenv("COMPOSER_TIMEOUT_S", "12"))     # per attempt
-COMPOSER_BUDGET_S = float(os.getenv("COMPOSER_BUDGET_S", "20"))       # whole ladder; 30s is the hard ceiling
+COMPOSER_TIMEOUT_S = float(os.getenv("COMPOSER_TIMEOUT_S", "25"))     # per attempt
+COMPOSER_BUDGET_S = float(os.getenv("COMPOSER_BUDGET_S", "35"))       # whole ladder; 30-35s ceiling
 COMPOSER_RETRY_BACKOFF_S = float(os.getenv("COMPOSER_RETRY_BACKOFF_S", "2"))
 DISABLE_LLM = os.getenv("DISABLE_LLM", "0") in ("1", "true", "yes")
 TEMPERATURE = float(os.getenv("TEMPERATURE", "0.6"))
-MAX_OUTPUT_TOKENS = int(os.getenv("MAX_OUTPUT_TOKENS", "1024"))
+MAX_OUTPUT_TOKENS = int(os.getenv("MAX_OUTPUT_TOKENS", "4096"))
 
 # --- Layer 1 tuning (Decision Quality knobs) ---
 SILENCE_BAR = float(os.getenv("SILENCE_BAR", "0.35"))          # below this score -> send nothing

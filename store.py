@@ -80,6 +80,7 @@ class Store:
         self._lock = threading.RLock()
         self.started_at = time.time()
         self.category: Optional[VersionedContext] = None
+        self.categories: dict[str, VersionedContext] = {}
         self.merchants: dict[str, VersionedContext] = {}
         self.customers: dict[str, VersionedContext] = {}
         self.triggers: dict[str, TriggerRecord] = {}
@@ -105,6 +106,7 @@ class Store:
             self._seen_versions[key] = version
             if scope == "category":
                 self.category = vc
+                self.categories[context_id] = vc
             elif scope == "merchant":
                 self.merchants[context_id] = vc
             elif scope == "customer":
@@ -121,6 +123,19 @@ class Store:
             return (True, True)
 
     # ---------- lookups ----------
+    def get_category(self, slug: Optional[str] = None) -> Optional[dict]:
+        if slug and slug in self.categories:
+            return self.categories[slug].payload
+        if slug:
+            for k, v in self.categories.items():
+                if slug in k or k in slug:
+                    return v.payload
+        if self.category:
+            return self.category.payload
+        if self.categories:
+            return next(iter(self.categories.values())).payload
+        return None
+
     def get_merchant(self, merchant_id: Optional[str]) -> Optional[dict]:
         if merchant_id and merchant_id in self.merchants:
             return self.merchants[merchant_id].payload
@@ -181,7 +196,7 @@ class Store:
     def counts(self) -> dict:
         with self._lock:
             return {
-                "category": 1 if self.category else 0,
+                "category": len(self.categories) if self.categories else (1 if self.category else 0),
                 "merchant": len(self.merchants),
                 "customer": len(self.customers),
                 "trigger": len(self.triggers),

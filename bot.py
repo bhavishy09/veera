@@ -113,69 +113,70 @@ def _gemini_call(system: str, user: str) -> Optional[dict]:
     order = [GEMINI_API_KEYS[(_LLM_STATE["rotation_idx"] + i) % len(GEMINI_API_KEYS)]
              for i in range(len(GEMINI_API_KEYS))]
     last_err = None
-    for key in order:
-        if key in _LLM_STATE["dead_keys"]:
-            continue
-        COUNTERS["llm_calls"] += 1
-        body: dict[str, Any] = {
-            "systemInstruction": {"parts": [{"text": system}]},
-            "contents": [{"role": "user", "parts": [{"text": user}]}],
-            "generationConfig": {
-                "temperature": TEMPERATURE,
-                "maxOutputTokens": MAX_OUTPUT_TOKENS,
-                "responseMimeType": "application/json",
-                "responseSchema": _RESPONSE_SCHEMA,
-            },
-        }
-        if GEMINI_MODEL.startswith("gemini-2.5"):
+    for attempt in range(3):
+        if time.monotonic() > deadline:
+            break
+        for key in order:
+            if key in _LLM_STATE["dead_keys"]:
+                continue
+            COUNTERS["llm_calls"] += 1
+            body: dict[str, Any] = {
+                "systemInstruction": {"parts": [{"text": system}]},
+                "contents": [{"role": "user", "parts": [{"text": user}]}],
+                "generationConfig": {
+                    "temperature": TEMPERATURE,
+                    "maxOutputTokens": MAX_OUTPUT_TOKENS,
+                    "responseMimeType": "application/json",
+                    "responseSchema": _RESPONSE_SCHEMA,
+                },
+            }
             body["generationConfig"]["thinkingConfig"] = {"thinkingBudget": 0}
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
-        try:
-            with httpx.Client(timeout=COMPOSER_TIMEOUT_S) as client:
-                resp = client.post(url, headers={"x-goog-api-key": key,
-                                                 "Content-Type": "application/json"},
-                                   json=body)
-            if resp.status_code == 400 and "thinkingConfig" in resp.text:
-                body["generationConfig"].pop("thinkingConfig", None)
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+            try:
                 with httpx.Client(timeout=COMPOSER_TIMEOUT_S) as client:
                     resp = client.post(url, headers={"x-goog-api-key": key,
                                                      "Content-Type": "application/json"},
                                        json=body)
-            if resp.status_code == 429:
-                _LLM_STATE["dead_keys"].add(key)
-                log.warning("key exhausted (429) — rotating; %d live keys left",
-                            len(GEMINI_API_KEYS) - len(_LLM_STATE["dead_keys"]))
-                last_err = "rate_limited"
+                if resp.status_code == 400 and "thinkingConfig" in resp.text:
+                    body["generationConfig"].pop("thinkingConfig", None)
+                    with httpx.Client(timeout=COMPOSER_TIMEOUT_S) as client:
+                        resp = client.post(url, headers={"x-goog-api-key": key,
+                                                         "Content-Type": "application/json"},
+                                           json=body)
+                if resp.status_code == 429:
+                    log.warning("rate limited (429) — backing off 3.0s...")
+                    time.sleep(3.0)
+                    last_err = "rate_limited"
+                    continue
+                if resp.status_code == 400 and "API_KEY_INVALID" in resp.text:
+                    _LLM_STATE["dead_keys"].add(key)
+                    log.warning("key invalid (400) — dropping; %d live keys left",
+                                len(GEMINI_API_KEYS) - len(_LLM_STATE["dead_keys"]))
+                    last_err = "invalid_key"
+                    continue
+                if resp.status_code >= 500 and time.monotonic() < deadline - COMPOSER_TIMEOUT_S:
+                    time.sleep(2.0)
+                    COUNTERS["llm_calls"] += 1
+                    resp = httpx.post(url, headers={"x-goog-api-key": key,
+                                                    "Content-Type": "application/json"},
+                                      json=body, timeout=COMPOSER_TIMEOUT_S)
+                resp.raise_for_status()
+                data = resp.json()
+                text = _extract_text(data)
+                if not text:
+                    last_err = "empty_candidate"
+                    break
+                parsed = _parse_json_loose(text)
+                if parsed is None:
+                    last_err = "unparseable"
+                    break
+                BREAKER.record_success()
+                return parsed
+            except Exception as exc:  # noqa: BLE001 — never propagate
+                last_err = f"{type(exc).__name__}: {exc}"[:160]
+                if time.monotonic() > deadline:
+                    break
                 continue
-            if resp.status_code == 400 and "API_KEY_INVALID" in resp.text:
-                _LLM_STATE["dead_keys"].add(key)
-                log.warning("key invalid (400) — dropping; %d live keys left",
-                            len(GEMINI_API_KEYS) - len(_LLM_STATE["dead_keys"]))
-                last_err = "invalid_key"
-                continue
-            if resp.status_code >= 500 and time.monotonic() < deadline - COMPOSER_TIMEOUT_S:
-                time.sleep(2.0)
-                COUNTERS["llm_calls"] += 1
-                resp = httpx.post(url, headers={"x-goog-api-key": key,
-                                                "Content-Type": "application/json"},
-                                  json=body, timeout=COMPOSER_TIMEOUT_S)
-            resp.raise_for_status()
-            data = resp.json()
-            text = _extract_text(data)
-            if not text:
-                last_err = "empty_candidate"
-                break
-            parsed = _parse_json_loose(text)
-            if parsed is None:
-                last_err = "unparseable"
-                break
-            BREAKER.record_success()
-            return parsed
-        except Exception as exc:  # noqa: BLE001 — never propagate
-            last_err = f"{type(exc).__name__}: {exc}"[:160]
-            if time.monotonic() > deadline:
-                break
-            continue
     COUNTERS["llm_failures"] += 1
     BREAKER.record_failure()
     log.error("gemini call failed (%s) — fallback will handle", last_err)
@@ -193,17 +194,39 @@ def _extract_text(data: dict) -> str:
 
 
 def _parse_json_loose(text: str) -> Optional[dict]:
-    try:
-        obj = json.loads(text)
-        return obj if isinstance(obj, dict) else None
-    except json.JSONDecodeError:
-        match = re.search(r"\{.*\}", text, re.S)
-        if match:
-            try:
-                obj = json.loads(match.group(0))
-                return obj if isinstance(obj, dict) else None
-            except json.JSONDecodeError:
-                return None
+    clean = text.strip()
+    if clean.startswith("```"):
+        clean = re.sub(r"^```(?:json)?\s*", "", clean)
+        clean = re.sub(r"\s*```$", "", clean)
+    for target in [clean, re.search(r"\{.*\}", clean, re.S)]:
+        s = target if isinstance(target, str) else (target.group(0) if target else None)
+        if not s:
+            continue
+        try:
+            obj = json.loads(s, strict=False)
+            if isinstance(obj, dict):
+                return obj
+        except Exception:
+            pass
+        s_fixed = re.sub(r",\s*([\}\]])", r"\1", s)
+        try:
+            obj = json.loads(s_fixed, strict=False)
+            if isinstance(obj, dict):
+                return obj
+        except Exception:
+            pass
+    # Regex fallback if JSON has unescaped quotes or syntax issues
+    b_match = re.search(r'"body"\s*:\s*"((?:[^"\\]|\\.)*)"', clean)
+    c_match = re.search(r'"cta"\s*:\s*"((?:[^"\\]|\\.)*)"', clean)
+    if b_match and c_match:
+        sk_match = re.search(r'"suppression_key"\s*:\s*"((?:[^"\\]|\\.)*)"', clean)
+        rat_match = re.search(r'"rationale"\s*:\s*"((?:[^"\\]|\\.)*)"', clean)
+        return {
+            "body": b_match.group(1).encode().decode("unicode_escape"),
+            "cta": c_match.group(1).encode().decode("unicode_escape"),
+            "suppression_key": sk_match.group(1).encode().decode("unicode_escape") if sk_match else "",
+            "rationale": rat_match.group(1).encode().decode("unicode_escape") if rat_match else "",
+        }
     return None
 
 
@@ -212,8 +235,8 @@ def _parse_json_loose(text: str) -> Optional[dict]:
 _SHAPE_EXAMPLE = json.dumps({
     "body": ("Hi Sunbeam Bakes — quick heads-up: your Saturday sourdough batch is "
              "half unsubscribed this week and 12 regulars from last month haven't "
-             "ordered. Want me to send them a one-line nudge about Saturday pickup?"),
-    "cta": "Reply YES and I'll queue the nudge.",
+             "ordered yet."),
+    "cta": "Reply YES and I'll queue a one-line nudge about Saturday pickup.",
     "suppression_key": "merchant:sunbeam:trigger:saturday_batch_2026w38",
     "rationale": ("Saturday production lock-in is tomorrow; nudging regulars today "
                   "still leaves them time to opt in."),
@@ -230,11 +253,12 @@ SCORING RUBRIC — your output is graded on all five dimensions:
 2. Category Fit — respect the category voice/tone and its taboos: {taboos}.
 3. Merchant Fit — reflect THIS merchant's actual stats and situation.
 4. Decision Quality — the message must make the why-now explicit and tied to the specific trigger.
-5. Engagement Compulsion — exactly ONE clear CTA. The CTA lives in the "cta" field; the body must not contain a second ask.
+5. Engagement Compulsion — exactly ONE clear CTA. The CTA lives in the "cta" field; the body must NOT contain a second ask or question.
 
 HARD CONSTRAINTS:
 - No URLs anywhere. Plain text only (no markdown, no asterisks).
 - WhatsApp register: short, scannable, ideally under 60 words.
+- Do NOT end the body with a question (e.g. do NOT say "Would you like to book?", "Want to proceed?", etc.). The body must state only the context/observation and end with a period. The call to action belongs strictly in the "cta" field.
 - If a CONVERSATION block is provided you are mid-conversation: never reintroduce yourself or the bot; respond to what they said.
 - Output ONLY the final JSON object (schema is enforced). Do your reasoning silently first.
 
@@ -493,31 +517,27 @@ def _score_trigger(trig: TriggerView, has_merchant: bool, has_customer: bool,
     return round(min(score, 1.0), 4)
 
 
-def layer1_evaluate(now: float) -> list[dict]:
+def layer1_evaluate(now: float, available_triggers: Optional[list[str]] = None) -> list[dict]:
     """Returns action dicts (already composed). Silence is a first-class outcome."""
-    cat_payload = STORE.category.payload if STORE.category else {}
-    cat = CategoryView(cat_payload)
-    candidates: list[tuple[float, str, TriggerView, Optional[dict], float]] = []
+    candidates: list[tuple[float, str, TriggerView, Optional[dict], float, CategoryView]] = []
 
     for tid, rec in list(STORE.triggers.items()):
+        if available_triggers and tid not in available_triggers:
+            continue
         trig = TriggerView(rec.ctx.payload, tid)
         expires_at = trig.expires_at or rec.expires_at
-        if expires_at and expires_at < now:
+        if not available_triggers and expires_at and expires_at < now:
             rec.status = "expired"
             STORE.log_decision(tick=now, trigger=tid, verdict="skip", reason="expired")
             continue
         if rec.status != "open":
             continue
         # --- why-now decay, measured on the SIM timeline ---
-        # Anchor this trigger's arrival on the tick clock the first time we
-        # see it (robust even when the judge's simulated clock differs from
-        # server wall-clock). A trigger still open after STALE_AFTER_S of sim
-        # time, with no imminent window, is no longer news — silence wins.
         if rec.sim_seen is None:
             wall_age = max(time.time() - rec.ctx.received_at, 0.0)
             rec.sim_seen = now - wall_age
         sim_age = now - rec.sim_seen
-        if sim_age > STALE_AFTER_S and (expires_at is None or expires_at - now > 48 * 3600):
+        if not available_triggers and sim_age > STALE_AFTER_S and (expires_at is None or expires_at - now > 48 * 3600):
             rec.status = "stale"
             STORE.log_decision(tick=now, trigger=tid, verdict="skip",
                                reason="stale_why_now", age_s=round(sim_age))
@@ -530,6 +550,10 @@ def layer1_evaluate(now: float) -> list[dict]:
         if not merch_payload:
             STORE.log_decision(tick=now, trigger=tid, verdict="skip", reason="no_merchant_context")
             continue
+        merch = MerchantView(merch_payload)
+        cat_payload = STORE.get_category(merch.category_slug)
+        cat = CategoryView(cat_payload)
+
         if STORE.is_suppressed(f"merchant:{mid}:ended"):
             STORE.log_decision(tick=now, trigger=tid, verdict="skip", reason="merchant_conversation_ended")
             continue
@@ -537,7 +561,7 @@ def layer1_evaluate(now: float) -> list[dict]:
         if conv is not None and conv.phase == "ended":
             STORE.log_decision(tick=now, trigger=tid, verdict="skip", reason="conversation_ended")
             continue
-        if STORE.merchant_recently_sent(mid, now):
+        if not available_triggers and STORE.merchant_recently_sent(mid, now):
             STORE.log_decision(tick=now, trigger=tid, verdict="skip", reason="merchant_pacing_window")
             continue
         if STORE.cache_get(mid, tid) is not None:
@@ -550,12 +574,10 @@ def layer1_evaluate(now: float) -> list[dict]:
         if score < SILENCE_BAR:
             STORE.log_decision(tick=now, trigger=tid, verdict="silence", score=score)
             continue
-        candidates.append((score, mid, trig, cust_payload, expires_at or 0.0))
+        candidates.append((score, mid, trig, cust_payload, expires_at or 0.0, cat))
 
     def _sort_key(c: tuple):
-        # best score first; tie-break: soonest-expiring window first, then
-        # freshest signal first (a newly injected trigger outranks old backlog)
-        score, _mid, trig, _cu, exp = c
+        score, _mid, trig, _cu, exp, _cat = c
         received = trig.raw.get("_received_at")
         if not isinstance(received, (int, float)):
             received = 0.0
@@ -565,12 +587,14 @@ def layer1_evaluate(now: float) -> list[dict]:
     actions: list[dict] = []
     per_merchant: dict[str, int] = {}
     selected: set[str] = set()
-    for score, mid, trig, cust_payload, _exp in candidates:
-        if len(actions) >= MAX_ACTIONS_PER_TICK:
+    max_actions = len(available_triggers) if available_triggers else MAX_ACTIONS_PER_TICK
+
+    for score, mid, trig, cust_payload, _exp, cat in candidates:
+        if len(actions) >= max_actions:
             STORE.log_decision(tick=now, trigger=trig.id, verdict="deferred",
                                reason="tick_cap", score=score)
             continue
-        if per_merchant.get(mid, 0) >= 1:       # never double-tap one merchant in a tick
+        if not available_triggers and per_merchant.get(mid, 0) >= 1:       # never double-tap one merchant in a tick
             STORE.log_decision(tick=now, trigger=trig.id, verdict="deferred",
                                reason="merchant_already_messaged_this_tick", score=score)
             continue
@@ -583,11 +607,12 @@ def layer1_evaluate(now: float) -> list[dict]:
         action = action_dict(body=comp["body"], cta=comp["cta"],
                              suppression_key=comp["suppression_key"],
                              rationale=comp["rationale"], to=to, send_as=send_as,
-                             trigger_id=trig.id, merchant_id=mid)
+                             trigger_id=trig.id, merchant_id=mid,
+                             customer_id=trig.customer_id)
         action["source"] = source
         action["score"] = score
         actions.append(action)
-        per_merchant[mid] = 1
+        per_merchant[mid] = per_merchant.get(mid, 0) + 1
         STORE.register_suppression(f"trigger:{trig.id}", "composed", mid, trig.id)
         STORE.triggers[trig.id].status = "acted"
         STORE.mark_sent(mid, now)
@@ -629,8 +654,8 @@ async def v1_context(request: Request):
         results.append({"scope": push.scope, "context_id": push.context_id,
                         "stored": accepted, "duplicate": not accepted})
     if len(results) == 1:
-        return {"status": "accepted", **results[0]}
-    return {"status": "accepted", "results": results}
+        return {"status": "accepted", "accepted": True, **results[0]}
+    return {"status": "accepted", "accepted": True, "results": results}
 
 
 @app.post("/v1/tick")
@@ -647,7 +672,7 @@ async def v1_tick(request: Request):
             req = TickRequest()          # tolerate unexpected tick shapes
         now = req.epoch(time.time())
         COUNTERS["ticks"] += 1
-        actions = layer1_evaluate(now)
+        actions = layer1_evaluate(now, available_triggers=req.available_triggers)
         COUNTERS["actions_sent"] += len(actions)
         for a in actions:
             a.pop("score", None)
@@ -690,11 +715,11 @@ async def v1_reply(request: Request):
     if decision["response"] == "wait":
         STORE.log_decision(reply=conv_key, verdict="wait", reason=decision.get("reason"))
         return {"response": "wait", "action": "wait", "reason": decision.get("reason", ""),
-                "detail": decision.get("detail", "")}
+                "detail": decision.get("detail", ""), "wait_seconds": 3600}
 
     # send → Layer 2 (conversational follow-up)
-    cat = CategoryView(STORE.category.payload if STORE.category else {})
     merch = MerchantView(STORE.get_merchant(mid) or {"merchant_name": "there"})
+    cat = CategoryView(STORE.get_category(merch.category_slug))
     cust_payload = STORE.get_customer(rr.customer_id)
     cust = CustomerView(cust_payload) if cust_payload else None
     trig_like = {"trigger_id": f"reply_{state.followup_count + 1}",
@@ -714,6 +739,8 @@ async def v1_reply(request: Request):
     return {"response": "send", "action": "send",
             "reason": decision.get("reason", "engaged"),
             "detail": decision.get("detail", ""),
+            "body": comp["body"],
+            "cta": comp["cta"],
             "message": {"body": comp["body"], "cta": comp["cta"],
                         "suppression_key": comp["suppression_key"],
                         "rationale": comp["rationale"]},
