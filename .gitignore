@@ -1,0 +1,30 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Users:.fileloc
+
+# Environment / Config
+.env
+.env.local
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv/
+
+# IDE / Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Project specific artifacts if needed
+scratch/

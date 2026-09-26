@@ -1,0 +1,102 @@
+[
+  {
+    "merchant_id": "m01",
+    "merchant_name": "Bright Smile Dental",
+    "locality": "Indiranagar",
+    "stats": {
+      "no_show_rate": "24%",
+      "rating": "4.3",
+      "monthly_footfall": "310",
+      "recall_list_size": "96",
+      "new_reviews_this_month": "4"
+    },
+    "history": [
+      "no-show rate rising 3 months in a row",
+      "last digest sent 2 weeks ago"
+    ]
+  },
+  {
+    "merchant_id": "m02",
+    "merchant_name": "Pearl Dental Studio",
+    "locality": "Koramangala",
+    "stats": {
+      "no_show_rate": "12%",
+      "rating": "4.7",
+      "total_reviews": "12",
+      "monthly_footfall": "85",
+      "new_reviews_this_month": "1",
+      "recall_list_size": "38"
+    },
+    "history": [
+      "opened 6 months ago",
+      "review count growing slowly"
+    ]
+  },
+  {
+    "merchant_id": "m03",
+    "merchant_name": "CitySmile Ortho Plus",
+    "locality": "HSR Layout",
+    "stats": {
+      "no_show_rate": "16%",
+      "rating": "4.4",
+      "active_braces_cases": "42",
+      "consultations_this_week": "11",
+      "recall_list_size": "27",
+      "new_reviews_this_month": "3"
+    },
+    "history": [
+      "orthodontics-focused practice",
+      "consult-to-start rate improving"
+    ]
+  },
+  {
+    "merchant_id": "m04",
+    "merchant_name": "GentleCare Family Dental",
+    "locality": "Jayanagar",
+    "stats": {
+      "no_show_rate": "15%",
+      "rating": "4.5",
+      "recall_list_size": "180",
+      "monthly_footfall": "420",
+      "new_reviews_this_month": "6"
+    },
+    "history": [
+      "largest recall list in cluster",
+      "weekend slots fill fastest"
+    ]
+  },
+  {
+    "merchant_id": "m05",
+    "merchant_name": "Apex Dental & Implant Center",
+    "locality": "Whitefield",
+    "stats": {
+      "no_show_rate": "21%",
+      "rating": "4.6",
+      "implants_placed": "500",
+      "avg_consult_wait_days": "4",
+      "recall_list_size": "64",
+      "new_reviews_this_month": "5"
+    },
+    "history": [
+      "recently crossed 500 implants",
+      "premium implant practice"
+    ]
+  },
+  {
+    "merchant_id": "m06",
+    "merchant_name": "Little Teeth Pediatric Dental",
+    "locality": "Marathahalli",
+    "stats": {
+      "no_show_rate": "11%",
+      "rating": "4.8",
+      "partner_schools": "6",
+      "monthly_footfall": "260",
+      "recall_list_size": "52",
+      "new_reviews_this_month": "7"
+    },
+    "history": [
+      "pediatric specialist",
+      "school camp program expanding"
+    ]
+  }
+]
