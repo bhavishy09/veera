@@ -230,7 +230,11 @@ class GeminiProvider(LLMProvider):
         full_prompt = f"{system}\n\n{prompt}" if system else prompt
         body = json.dumps({
             "contents": [{"parts": [{"text": full_prompt}]}],
-            "generationConfig": {"temperature": 0.2, "maxOutputTokens": 4096}
+            "generationConfig": {
+                "temperature": 0.2,
+                "maxOutputTokens": 4096,
+                "thinkingConfig": {"thinkingBudget": 0}
+            }
         }).encode("utf-8")
 
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"
