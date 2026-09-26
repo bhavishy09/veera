@@ -790,5 +790,12 @@ async def _unhandled(request: Request, exc: Exception):
                         status_code=500)
 
 
+try:
+    from web_api import router as web_router
+    app.include_router(web_router)
+except Exception as _e:
+    log.warning("could not mount web_router: %s", _e)
+
+
 if __name__ == "__main__":
     uvicorn.run("bot:app", host="0.0.0.0", port=PORT, log_level=LOG_LEVEL.lower())
