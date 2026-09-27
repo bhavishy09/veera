@@ -229,13 +229,78 @@ head -n 2 submission.jsonl
 
 ---
 
-## 7. Submission Deliverables Confirmation
+## 7. Live Production Deployment (Render)
 
-For the final challenge submission, you only need to provide:
-1. **One Public Backend URL** (e.g. deployed to Cloud Run, Render, Railway, AWS, or an ngrok tunnel pointing to port 8000) exposing the 5 endpoints above. **No frontend URL is needed or scored.**
-2. **The 4 Core Repository Files**:
-   - `bot.py`
-   - `conversation_handlers.py`
-   - `submission.jsonl` (contains all 30 evaluated canonical test cases)
-   - `README.md`
+The bot is deployed live to **Render** as a high-availability cloud web service:
+
+- **Public Production URL**: [`https://veera-bot-pjqr.onrender.com`](https://veera-bot-pjqr.onrender.com)
+- **Deployment Status**: `Live`
+- **SSL / HTTPS**: Enabled by default
+- **Architecture**: In-memory stores preloaded with seed dataset on boot, with stateless REST endpoints
+
+### Remote Verification Commands (Directly Against Production)
+
+You can verify each endpoint directly against the live cloud instance:
+
+```bash
+# 1. Health & Context Check
+curl https://veera-bot-pjqr.onrender.com/v1/healthz
+
+# 2. Team Metadata Check
+curl https://veera-bot-pjqr.onrender.com/v1/metadata
+
+# 3. Context Ingestion Test
+curl -X POST https://veera-bot-pjqr.onrender.com/v1/context \
+  -H "Content-Type: application/json" \
+  -d '{
+    "scope": "merchant",
+    "context_id": "m_test_render",
+    "version": 1,
+    "payload": {
+      "merchant_id": "m_test_render",
+      "name": "Render Dental Clinic",
+      "category_slug": "dentists",
+      "identity": {"owner_first_name": "Meera"}
+    },
+    "delivered_at": "2026-09-27T12:00:00Z"
+  }'
+
+# 4. Proactive Trigger Tick Evaluation
+curl -X POST https://veera-bot-pjqr.onrender.com/v1/tick \
+  -H "Content-Type: application/json" \
+  -d '{
+    "now": "2026-09-27T12:00:00Z",
+    "available_triggers": ["trg_003_recall_due_priya"]
+  }'
+
+# 5. Multi-Turn Conversational Reply
+curl -X POST https://veera-bot-pjqr.onrender.com/v1/reply \
+  -H "Content-Type: application/json" \
+  -d '{
+    "conversation_id": "conv_render_01",
+    "merchant_id": "m_001_drmeera_dentist_delhi",
+    "customer_id": null,
+    "from_role": "merchant",
+    "message": "Yes please send the reminder draft.",
+    "received_at": "2026-09-27T12:00:00Z",
+    "turn_number": 1
+  }'
+
+# 6. Run Official Judge Simulator Against Production
+BOT_URL=https://veera-bot-pjqr.onrender.com python3 judge_simulator.py full_evaluation
+```
+
+---
+
+## 8. Submission Deliverables Confirmation
+
+For the final challenge submission, provide:
+1. **Public Backend URL**: `https://veera-bot-pjqr.onrender.com`
+   *(Exposes all 5 endpoints required by the challenge. No frontend URL is needed or scored).*
+2. **The 4 Core Repository Deliverables**:
+   - [`bot.py`](bot.py)
+   - [`conversation_handlers.py`](conversation_handlers.py)
+   - [`submission.jsonl`](submission.jsonl) (30 evaluated canonical test cases)
+   - [`README.md`](README.md)
+
 
