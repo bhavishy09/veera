@@ -1,5 +1,11 @@
 # Vera — magicpin AI Challenge
 
+[![Live Deployment](https://img.shields.io/badge/Render-Live%20Backend-24c8db?style=for-the-badge&logo=render&logoColor=white)](https://veera-bot-pjqr.onrender.com)
+[![Status](https://img.shields.io/badge/API-Operational-brightgreen?style=for-the-badge)](https://veera-bot-pjqr.onrender.com/v1/healthz)
+[![Model](https://img.shields.io/badge/Model-Gemini%203.1%20Flash%20Lite-orange?style=for-the-badge&logo=google)](https://veera-bot-pjqr.onrender.com/v1/metadata)
+
+> 🚀 **Live Production Backend URL:** [`https://veera-bot-pjqr.onrender.com`](https://veera-bot-pjqr.onrender.com)
+
 Vera is an intelligent, autonomous WhatsApp messaging engine built for the **magicpin AI Challenge**. It empowers small local merchants across 5 key verticals (dentists, salons, restaurants, gyms, and pharmacies) to engage customers and drive operational growth through context-aware, hyper-personalized, and policy-compliant WhatsApp messages.
 
 ---
