@@ -121,52 +121,66 @@ The official [`judge_simulator.py`](judge_simulator.py) executed all 30 canonica
 
 ---
 
-## 6. Step-by-Step Guide & Terminal Commands
+## 6. Step-by-Step Terminal Guide (Run & Verify Locally)
 
-### Step 1: Set Up Python Environment
-Ensure Python 3.10+ is installed:
+Follow this step-by-step workflow in your terminal to start the server, verify all 5 endpoints, and run the official judge simulator:
+
+### Step 1: Open Terminal & Navigate to Project
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
+cd /Users/bhavishyakatariya/Downloads/vera-final
+```
+
+### Step 2: Install Dependencies (if not already installed)
+```bash
 pip install -r requirements.txt
 ```
 
-### Step 2: Configure Environment Variables
-Copy `.env.example` to `.env`:
-```bash
-cp .env.example .env
-```
-Ensure your Gemini API key is configured in `.env`:
-```bash
-GEMINI_API_KEYS=your_gemini_api_key_here
-GEMINI_MODEL=gemini-3.1-flash-lite
-PORT=8000
-```
-
 ### Step 3: Start the Backend Server
-Launch the FastAPI application:
+Run this in **Terminal 1**:
 ```bash
 python3 -m uvicorn bot:app --host 0.0.0.0 --port 8000
 ```
-Verify the server is running by checking health:
+> **Status:** You should see:
+> `INFO: Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)`
+> *(Note: The backend automatically pre-loads all bundled seed contexts from `dataset/` on boot, so every endpoint is ready immediately.)*
+
+---
+
+### Step 4: Verify the 5 Required Endpoints
+Open a **new terminal tab (Terminal 2)** and run these commands to test each endpoint:
+
+#### 1. Check Health (`GET /v1/healthz`)
 ```bash
 curl http://localhost:8000/v1/healthz
 ```
+- **Expected:** Returns JSON with `"status": "ok"`, `"bot": "Vera"`, and loaded context counts.
 
-### Step 4: Run the Official Judge Simulator
-In a separate terminal window, run the full evaluation:
+#### 2. Check Team Metadata (`GET /v1/metadata`)
 ```bash
-python3 judge_simulator.py full_evaluation
+curl http://localhost:8000/v1/metadata
 ```
-This command will:
-1. Push all merchants, customers, triggers, and categories to the running bot.
-2. Evaluate all 30 test cases (`T01` to `T30`).
-3. Print scores across all 5 rubric dimensions for each test case.
-4. Export the final `submission.jsonl` file.
+- **Expected:** Returns JSON with `"team_name": "bot_champ"` and list of 5 endpoints.
 
-### Step 5: Test Endpoints Manually (Optional)
+#### 3. Test Ingesting Context (`POST /v1/context`)
+```bash
+curl -X POST http://localhost:8000/v1/context \
+  -H "Content-Type: application/json" \
+  -d '{
+    "scope": "merchant",
+    "context_id": "m_test_demo",
+    "version": 1,
+    "payload": {
+      "merchant_id": "m_test_demo",
+      "name": "Smile Clinic",
+      "category_slug": "dentists",
+      "identity": {"owner_first_name": "Meera"}
+    },
+    "delivered_at": "2026-09-27T12:00:00Z"
+  }'
+```
+- **Expected:** Returns `{"status": "accepted", "accepted": true}`.
 
-**Test a Proactive Tick Call:**
+#### 4. Test Proactive Trigger Evaluation (`POST /v1/tick`)
 ```bash
 curl -X POST http://localhost:8000/v1/tick \
   -H "Content-Type: application/json" \
@@ -175,30 +189,53 @@ curl -X POST http://localhost:8000/v1/tick \
     "available_triggers": ["trg_003_recall_due_priya"]
   }'
 ```
+- **Expected:** Returns an `actions` list containing a formatted WhatsApp message with single CTA and rationale.
 
-**Test a Multi-Turn Conversation Reply:**
+#### 5. Test Multi-Turn Merchant Reply (`POST /v1/reply`)
 ```bash
 curl -X POST http://localhost:8000/v1/reply \
   -H "Content-Type: application/json" \
   -d '{
-    "conversation_id": "conv_demo_01",
+    "conversation_id": "conv_test_001",
     "merchant_id": "m_001_drmeera_dentist_delhi",
     "customer_id": null,
     "from_role": "merchant",
-    "message": "Yes please send the update.",
+    "message": "Yes please send the reminder draft.",
     "received_at": "2026-09-27T12:00:00Z",
     "turn_number": 1
   }'
 ```
+- **Expected:** Returns `{"response": "send", ...}` with the composed follow-up message.
+
+---
+
+### Step 5: Run the Official Judge Simulator
+In **Terminal 2**, run the full 30-case evaluation:
+```bash
+python3 judge_simulator.py full_evaluation
+```
+- **Expected:** The judge evaluates all 30 test cases (`T01` to `T30`), prints dimension score bars, and outputs:
+  `[PASS] Generated submission.jsonl with 30 records`
+
+---
+
+### Step 6: Verify `submission.jsonl`
+Confirm all 30 records exist and are properly formatted:
+```bash
+wc -l submission.jsonl
+head -n 2 submission.jsonl
+```
+- **Expected:** Exact line count of `30 submission.jsonl` with all required fields (`test_id`, `body`, `cta`, `send_as`, `suppression_key`, `rationale`).
 
 ---
 
 ## 7. Submission Deliverables Confirmation
 
 For the final challenge submission, you only need to provide:
-1. **One Public Backend URL** (e.g. deployed to Cloud Run, Render, Railway, AWS, or an ngrok public tunnel pointing to port 8000) that exposes the 5 endpoints above. **No frontend URL is needed or graded.**
-2. **The 4 Core Repository Deliverables**:
+1. **One Public Backend URL** (e.g. deployed to Cloud Run, Render, Railway, AWS, or an ngrok tunnel pointing to port 8000) exposing the 5 endpoints above. **No frontend URL is needed or scored.**
+2. **The 4 Core Repository Files**:
    - `bot.py`
    - `conversation_handlers.py`
-   - `submission.jsonl` (contains all 30 evaluated test cases)
+   - `submission.jsonl` (contains all 30 evaluated canonical test cases)
    - `README.md`
+
