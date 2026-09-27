@@ -22,9 +22,26 @@ Author: magicpin AI Challenge Team
 
 import os
 import sys
+from pathlib import Path
+
+# Native .env loader (guarantees .env is parsed even if python-dotenv is not installed)
+_env_file = Path(__file__).resolve().parent / ".env"
+if _env_file.exists():
+    try:
+        for _line in _env_file.read_text(encoding="utf-8").splitlines():
+            _line = _line.strip()
+            if _line and not _line.startswith("#") and "=" in _line:
+                _k, _v = _line.split("=", 1)
+                _k = _k.strip()
+                _v = _v.strip().strip("'\"")
+                if _k and _k not in os.environ:
+                    os.environ[_k] = _v
+    except Exception:
+        pass
+
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    load_dotenv(_env_file)
 except Exception:
     pass
 
@@ -38,7 +55,7 @@ LLM_PROVIDER = os.getenv("LLM_PROVIDER", "gemini")
 LLM_API_KEY = os.getenv("LLM_API_KEY") or (os.getenv("GEMINI_API_KEYS", "").split(",")[0] if os.getenv("GEMINI_API_KEYS") else "")
 
 # Model to use (leave empty for default, or specify like "gpt-4o", "claude-3-5-sonnet-20241022", etc.)
-LLM_MODEL = os.getenv("LLM_MODEL", "gemini-flash-latest")
+LLM_MODEL = os.getenv("LLM_MODEL", "gemini-3.1-flash-lite")
 
 # For Ollama only: local server URL
 OLLAMA_URL = "http://localhost:11434"
