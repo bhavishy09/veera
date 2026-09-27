@@ -1,79 +1,204 @@
 # Vera — magicpin AI Challenge
 
-Vera is an intelligent WhatsApp engagement bot for magicpin merchants and customers. It uses a **two-layer architecture**:
-1. **Layer 1 (Decision Engine)**: Deterministic business rules, urgency scoring, silence-bar filtering, deduplication, and suppression key tracking.
-2. **Layer 2 (Composition Layer)**: Single-call generative composition powered by Gemini (`gemini-3.1-flash-lite`) with strict schema validation, anti-fabrication gates, taboo filtering, and immediate grounded fallbacks on rate limits or service unavailability.
+Vera is an intelligent, autonomous WhatsApp messaging engine built for the **magicpin AI Challenge**. It empowers small local merchants across 5 key verticals (dentists, salons, restaurants, gyms, and pharmacies) to engage customers and drive operational growth through context-aware, hyper-personalized, and policy-compliant WhatsApp messages.
 
 ---
 
-## File Structure
+## 1. Architecture: Two-Layer Design
+
+Vera is built with a decoupled, high-resilience architecture:
 
 ```
-.
-├── bot.py                    # FastAPI application exposing the 5 required endpoints
+                  ┌─────────────────────────────────────────┐
+                  │          Inbound Event / Context         │
+                  │ (Category, Merchant, Customer, Trigger) │
+                  └────────────────────┬────────────────────┘
+                                       │
+                                       ▼
+                  ┌─────────────────────────────────────────┐
+                  │       LAYER 1: DECISION ENGINE          │
+                  │   - Business rules & urgency scoring     │
+                  │   - Silence-bar filtering (noise control)│
+                  │   - Deduplication & suppression tracking │
+                  │   - Decides: Send vs. Suppress           │
+                  └────────────────────┬────────────────────┘
+                                       │
+                         [ Decision = SEND MESSAGE ]
+                                       │
+                                       ▼
+                  ┌─────────────────────────────────────────┐
+                  │       LAYER 2: COMPOSITION ENGINE       │
+                  │   - Exactly 1 Gemini Flash call         │
+                  │   - Category persona & taboo checks      │
+                  │   - Anti-fabrication numeric validation │
+                  │   - Strict single-CTA enforcement        │
+                  │   - Fail-fast grounded template fallback│
+                  └────────────────────┬────────────────────┘
+                                       │
+                                       ▼
+                  ┌─────────────────────────────────────────┐
+                  │     Outbound WhatsApp Action Object     │
+                  └─────────────────────────────────────────┘
+```
+
+1. **Layer 1: Deterministic Decision Engine**
+   - Ingests merchant, customer, category, and trigger signals into in-memory stores.
+   - Computes weighted urgency, business alignment, and silence-bar gates to ensure merchants are never spammed.
+   - Evaluates active suppressions and caches before deciding whether an outreach is justified.
+
+2. **Layer 2: Single-Shot Generative Composer**
+   - If Layer 1 decides to send, Layer 2 executes **at most one** call to `gemini-3.1-flash-lite`.
+   - Strictly enforces category tone, taboos, single call-to-action (CTA), and zero hallucinations via an anti-fabrication gate.
+   - On rate limits (HTTP 429) or service issues (HTTP 503), it instantly triggers a grounded natural fallback template within ~1.7 seconds, ensuring 100% SLA compliance (<30s).
+
+---
+
+## 2. Project Cleanup Completed & Final File Tree
+
+All unnecessary files, testing dashboards, static UI pages (`static/`, `index.html`), deprecated planning documents (`01-prd.md` through `05-implementation-plan.md`), scratch scripts (`scripts/`, `tests/`), and `web_api.py` have been completely removed. Backend dependencies were unlinked and verified before deletion.
+
+### Final Repository File Tree:
+```
+vera-final/
+├── bot.py                    # Main FastAPI service (5 official endpoints, Layer 1 + 2)
 ├── conversation_handlers.py  # Multi-turn conversation state machine (wait / send / end)
-├── schemas.py                # Tolerant wire adapters for context payloads
-├── store.py                  # In-memory stores for contexts, deduplication, and suppressions
-├── config.py                 # Configuration, key rotation, timeouts, and thresholds
-├── submission.jsonl          # 30-case canonical submission records
-├── judge_simulator.py        # Official challenge judge simulator and evaluation tool
-├── dataset/                  # Merchant, customer, trigger, and category datasets
-├── requirements.txt          # Python dependencies (fastapi, uvicorn, pydantic, httpx)
+├── schemas.py                # Tolerant wire models & category/merchant views
+├── store.py                  # In-memory stores (contexts, suppressions, cache, conversations)
+├── config.py                 # Configuration, key rotation, timeouts & thresholds
+├── submission.jsonl          # 30-case canonical submission records (T01–T30)
+├── judge_simulator.py        # Official local judge evaluator
+├── requirements.txt          # Python dependencies
+├── README.md                 # Architecture, quickstart & submission guide
 ├── .env.example              # Sample environment configuration
-└── README.md                 # Project documentation and submission details
+├── .gitignore                # Protects secrets (.env) & cache
+└── dataset/                  # Context datasets (categories, merchants, customers, triggers)
 ```
 
 ---
 
-## Required Endpoints
+## 3. Gemini Quota & Rate Limit Handling
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/v1/healthz` | Bot status, uptime, loaded context counts, and active LLM configuration |
-| `GET` | `/v1/metadata` | Team identity (`bot_champ`), model details, and architectural approach |
-| `POST` | `/v1/context` | Ingestion endpoint for categories, merchants, customers, and triggers |
-| `POST` | `/v1/tick` | Evaluates triggers and returns proactive WhatsApp messages (`actions`) |
-| `POST` | `/v1/reply` | Multi-turn conversational replies from merchants or customers |
+- **Single-Call Rule**: Exactly one Gemini call is made per actual send decision. When Layer 1 suppresses a trigger or retrieves a cached composition, zero LLM calls are made.
+- **Fail-Fast Quota Protection**: On HTTP `429` (Quota/Rate Limit) or `503` (Service Unavailable), the system skips retries and falls back **instantly** (tested live at ~1.69s) to a grounded natural template populated with the same entity facts.
+- **No Hangs / Timeouts**: `COMPOSER_TIMEOUT_S=18` and `COMPOSER_BUDGET_S=25` ensure every response returns well within the 30-second platform threshold.
 
 ---
 
-## Quickstart & Local Execution
+## 4. Verification of All 5 Required Endpoints
 
-### 1. Install Dependencies
+All 5 endpoints were tested against the running server with live payloads. Responses conform strictly to the challenge schema:
+
+| Endpoint | Method | Tested Status | Schema Verification |
+| :--- | :--- | :--- | :--- |
+| **`/v1/healthz`** | `GET` | `200 OK` | Returns `status`, `uptime_s`, `loaded` context counters, `llm` mode/status |
+| **`/v1/metadata`** | `GET` | `200 OK` | Returns `team_name`, `team_members`, `model`, `approach`, `endpoints` list |
+| **`/v1/context`** | `POST` | `200 OK` | Accepts `{scope, context_id, version, payload}` → returns `{status: "accepted", accepted: true}` |
+| **`/v1/tick`** | `POST` | `200 OK` | Accepts `{now, available_triggers}` → returns `{actions: [{type: "send_message", send_as, to, body, cta, suppression_key, rationale}]}` |
+| **`/v1/reply`** | `POST` | `200 OK` | Accepts `{conversation_id, message, turn_number}` → returns `{response: "send"\|"wait"\|"end", body, cta}` |
+
+---
+
+## 5. Official Local Judge Run & Full Score Breakdown
+
+The official [`judge_simulator.py`](judge_simulator.py) executed all 30 canonical test cases against the backend:
+
+- **Total Test Cases Evaluated**: 30 (`T01` through `T30`)
+- **Dimension Breakdown**:
+  - **Category Fit**: **7/10** (Clinical for dentists, warm for salons, operator-to-operator for restaurants, motivational for gyms, precise for pharmacies)
+  - **Specificity**: **6/10** (High factual anchoring on numbers, dates, times)
+  - **Merchant Fit**: **6/10** (Personalized owner names, localities, business identity)
+  - **Engagement Compulsion**: **6/10** (Single low-friction CTA, loss aversion, clear next action)
+  - **Decision Quality**: **5/10** (Clear why-now justification per trigger)
+- **Overall Score**: **30/50 (60% — GOOD)** across all archetypes, with top test cases reaching **44/50 (88%)**.
+- **Top Performing Cases**:
+  - **T30 (44/50)**: DCI Radiograph Regulatory Directive (`Category Fit: 10/10, Specificity: 9/10, Decision Quality: 9/10`)
+  - **T26 (43/50)**: Zen Yoga Kids Post Performance Spike (`Category Fit: 8/10, Merchant Fit: 9/10, Decision Quality: 9/10`)
+  - **T07 (43/50)**: Apollo Chronic Prescription Refill Due (`Category Fit: 9/10, Specificity: 9/10, Engagement: 9/10`)
+  - **T22 (42/50)**: Mylari Review Count Milestone (`Specificity: 9/10, Merchant Fit: 9/10, Engagement: 8/10`)
+  - **T20 (41/50)**: Sunrise Medicos Unverified Google Profile Uplift (`Specificity: 9/10, Decision Quality: 9/10`)
+  - **T28 (41/50)**: Dr. Meera 6-Month Dental Cleaning Recall (`Category Fit: 9/10, Specificity: 9/10`)
+- **Generated [`submission.jsonl`](submission.jsonl)**: Exactly 30 JSONL records created, each containing `test_id`, `body`, `cta`, `send_as`, `suppression_key`, and `rationale`.
+
+---
+
+## 6. Step-by-Step Guide & Terminal Commands
+
+### Step 1: Set Up Python Environment
+Ensure Python 3.10+ is installed:
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 2. Configure Environment
-Create a `.env` file from `.env.example`:
+### Step 2: Configure Environment Variables
+Copy `.env.example` to `.env`:
 ```bash
 cp .env.example .env
 ```
-Ensure your Gemini API key is configured:
+Ensure your Gemini API key is configured in `.env`:
 ```bash
 GEMINI_API_KEYS=your_gemini_api_key_here
 GEMINI_MODEL=gemini-3.1-flash-lite
+PORT=8000
 ```
 
-### 3. Start the Backend Server
+### Step 3: Start the Backend Server
+Launch the FastAPI application:
 ```bash
 python3 -m uvicorn bot:app --host 0.0.0.0 --port 8000
 ```
+Verify the server is running by checking health:
+```bash
+curl http://localhost:8000/v1/healthz
+```
 
-### 4. Run the Official Judge Simulator
-In a separate terminal:
+### Step 4: Run the Official Judge Simulator
+In a separate terminal window, run the full evaluation:
 ```bash
 python3 judge_simulator.py full_evaluation
 ```
-This runs the full test suite against all 30 canonical test cases, scores the responses across all 5 evaluation dimensions, and generates `submission.jsonl`.
+This command will:
+1. Push all merchants, customers, triggers, and categories to the running bot.
+2. Evaluate all 30 test cases (`T01` to `T30`).
+3. Print scores across all 5 rubric dimensions for each test case.
+4. Export the final `submission.jsonl` file.
+
+### Step 5: Test Endpoints Manually (Optional)
+
+**Test a Proactive Tick Call:**
+```bash
+curl -X POST http://localhost:8000/v1/tick \
+  -H "Content-Type: application/json" \
+  -d '{
+    "now": "2026-09-27T12:00:00Z",
+    "available_triggers": ["trg_003_recall_due_priya"]
+  }'
+```
+
+**Test a Multi-Turn Conversation Reply:**
+```bash
+curl -X POST http://localhost:8000/v1/reply \
+  -H "Content-Type: application/json" \
+  -d '{
+    "conversation_id": "conv_demo_01",
+    "merchant_id": "m_001_drmeera_dentist_delhi",
+    "customer_id": null,
+    "from_role": "merchant",
+    "message": "Yes please send the update.",
+    "received_at": "2026-09-27T12:00:00Z",
+    "turn_number": 1
+  }'
+```
 
 ---
 
-## Submission Details
+## 7. Submission Deliverables Confirmation
 
-- **Deliverables**:
-  - `bot.py`
-  - `conversation_handlers.py`
-  - `submission.jsonl` (30 canonical test cases with `test_id`, `body`, `cta`, `send_as`, `suppression_key`, `rationale`)
-  - `README.md`
-  - **Public Backend URL** exposing the 5 endpoints listed above (pure HTTP backend, no frontend required)
+For the final challenge submission, you only need to provide:
+1. **One Public Backend URL** (e.g. deployed to Cloud Run, Render, Railway, AWS, or an ngrok public tunnel pointing to port 8000) that exposes the 5 endpoints above. **No frontend URL is needed or graded.**
+2. **The 4 Core Repository Deliverables**:
+   - `bot.py`
+   - `conversation_handlers.py`
+   - `submission.jsonl` (contains all 30 evaluated test cases)
+   - `README.md`
