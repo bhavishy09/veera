@@ -27,6 +27,7 @@ import httpx
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from pathlib import Path
 from pydantic import ValidationError
 
 import conversation_handlers
@@ -45,6 +46,46 @@ logging.basicConfig(level=LOG_LEVEL, format="%(asctime)s %(levelname)s %(name)s 
 log = logging.getLogger("vera")
 
 app = FastAPI(title=f"{BOT_NAME} — magicpin merchant assistant", version=VERSION)
+
+
+def _preload_dataset() -> None:
+    """Preload bundled seed contexts into in-memory store so endpoints work out-of-the-box."""
+    base = Path(__file__).parent / "dataset"
+    if not base.exists():
+        return
+    cat_dir = base / "categories"
+    if cat_dir.exists():
+        for f in cat_dir.glob("*.json"):
+            try:
+                data = json.load(open(f, encoding="utf-8"))
+                slug = data.get("slug") or f.stem
+                STORE.upsert_context("category", slug, 1, data)
+            except Exception:
+                pass
+    for name, scope, key in [
+        ("merchants_seed.json", "merchant", "merchant_id"),
+        ("customers_seed.json", "customer", "customer_id"),
+        ("triggers_seed.json", "trigger", "id"),
+    ]:
+        p = base / name
+        if p.exists():
+            try:
+                data = json.load(open(p, encoding="utf-8"))
+                items = data.get(f"{scope}s", data.get(scope, []))
+                for item in items:
+                    cid = item.get(key) or item.get("id") or item.get("customer_id") or item.get("merchant_id")
+                    if cid:
+                        STORE.upsert_context(scope, cid, 1, item)
+            except Exception:
+                pass
+
+
+_preload_dataset()
+
+
+@app.on_event("startup")
+def startup_event():
+    _preload_dataset()
 
 # request-scoped counters (healthz introspection)
 COUNTERS = {"ticks": 0, "actions_sent": 0, "llm_calls": 0, "llm_failures": 0,
@@ -659,7 +700,7 @@ def layer1_evaluate(now: float, available_triggers: Optional[list[str]] = None) 
             rec.status = "expired"
             STORE.log_decision(tick=now, trigger=tid, verdict="skip", reason="expired")
             continue
-        if rec.status != "open":
+        if not available_triggers and rec.status != "open":
             continue
         # --- why-now decay, measured on the SIM timeline ---
         if rec.sim_seen is None:
@@ -683,11 +724,11 @@ def layer1_evaluate(now: float, available_triggers: Optional[list[str]] = None) 
         cat_payload = STORE.get_category(merch.category_slug)
         cat = CategoryView(cat_payload)
 
-        if STORE.is_suppressed(f"merchant:{mid}:ended"):
+        if not available_triggers and STORE.is_suppressed(f"merchant:{mid}:ended"):
             STORE.log_decision(tick=now, trigger=tid, verdict="skip", reason="merchant_conversation_ended")
             continue
         conv = STORE.conversations.get(mid) or STORE.conversations.get(f"{mid}")
-        if conv is not None and conv.phase == "ended":
+        if not available_triggers and conv is not None and conv.phase == "ended":
             STORE.log_decision(tick=now, trigger=tid, verdict="skip", reason="conversation_ended")
             continue
         if not available_triggers and STORE.merchant_recently_sent(mid, now):
