@@ -28,10 +28,10 @@ def _parse_keys() -> list[str]:
     return [k.strip() for k in raw.split(",") if k.strip()]
 
 GEMINI_API_KEYS: list[str] = _parse_keys()
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-COMPOSER_TIMEOUT_S = float(os.getenv("COMPOSER_TIMEOUT_S", "25"))     # per attempt
-COMPOSER_BUDGET_S = float(os.getenv("COMPOSER_BUDGET_S", "35"))       # whole ladder; 30-35s ceiling
-COMPOSER_RETRY_BACKOFF_S = float(os.getenv("COMPOSER_RETRY_BACKOFF_S", "2"))
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
+COMPOSER_TIMEOUT_S = float(os.getenv("COMPOSER_TIMEOUT_S", "14"))     # per attempt (fail fast in 14s)
+COMPOSER_BUDGET_S = float(os.getenv("COMPOSER_BUDGET_S", "20"))       # whole ladder ceiling
+COMPOSER_RETRY_BACKOFF_S = float(os.getenv("COMPOSER_RETRY_BACKOFF_S", "1.5"))
 DISABLE_LLM = os.getenv("DISABLE_LLM", "0") in ("1", "true", "yes")
 TEMPERATURE = float(os.getenv("TEMPERATURE", "0.6"))
 MAX_OUTPUT_TOKENS = int(os.getenv("MAX_OUTPUT_TOKENS", "4096"))
@@ -50,8 +50,8 @@ AUTO_REPLY_THRESHOLD = int(os.getenv("AUTO_REPLY_THRESHOLD", "2"))   # consecuti
 HOSTILITY_THRESHOLD = int(os.getenv("HOSTILITY_THRESHOLD", "1"))
 
 # --- LLM circuit breaker ---
-BREAKER_THRESHOLD = int(os.getenv("BREAKER_THRESHOLD", "3"))   # consecutive failures
-BREAKER_COOLDOWN_S = float(os.getenv("BREAKER_COOLDOWN_S", "60"))
+BREAKER_THRESHOLD = int(os.getenv("BREAKER_THRESHOLD", "5"))   # consecutive failures before trip
+BREAKER_COOLDOWN_S = float(os.getenv("BREAKER_COOLDOWN_S", "5")) # brief 5s cooldown so manual user testing always re-engages LLM
 
 # --- grounding / anti-penalty validators ---
 MAX_BODY_CHARS = int(os.getenv("MAX_BODY_CHARS", "900"))

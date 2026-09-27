@@ -1,53 +1,79 @@
-# Vera — magicpin AI Challenge (final package)
+# Vera — magicpin AI Challenge
 
-This bundle contains everything built for the magicpin merchant-WhatsApp bot
-challenge, in two parts:
+Vera is an intelligent WhatsApp engagement bot for magicpin merchants and customers. It uses a **two-layer architecture**:
+1. **Layer 1 (Decision Engine)**: Deterministic business rules, urgency scoring, silence-bar filtering, deduplication, and suppression key tracking.
+2. **Layer 2 (Composition Layer)**: Single-call generative composition powered by Gemini (`gemini-3.1-flash-lite`) with strict schema validation, anti-fabrication gates, taboo filtering, and immediate grounded fallbacks on rate limits or service unavailability.
+
+---
+
+## File Structure
 
 ```
-vera-final/
-├── vera-submission/      ← THE DELIVERABLE (run this)
-│   ├── bot.py                    FastAPI: /v1/context /v1/tick /v1/reply
-│   │                             /v1/healthz /v1/metadata (+ /v1/teardown)
-│   │                             Layer 1 decision engine + Layer 2 composer
-│   ├── conversation_handlers.py  multi-turn reply state machine
-│   ├── schemas.py                tolerant wire parsing (single adapter point)
-│   ├── store.py                  in-memory stores (idempotent contexts, cache,
-│   │                             suppressions, conversations, decision log)
-│   ├── config.py                 env config + Layer-1 knobs
-│   ├── submission.jsonl          30-line static submission
-│   ├── dataset/                  rehearsal dataset (6 merchants x 5 archetypes)
-│   ├── scripts/                  gen_dataset / gen_submission / mock_judge /
-│   │                             validate_submission
-│   ├── tests/                    18 unit tests
-│   └── README.md                 full approach + run instructions
-└── vera-planning-docs/   ← design docs (PRD, tech stack, flows, schema, plan)
+.
+├── bot.py                    # FastAPI application exposing the 5 required endpoints
+├── conversation_handlers.py  # Multi-turn conversation state machine (wait / send / end)
+├── schemas.py                # Tolerant wire adapters for context payloads
+├── store.py                  # In-memory stores for contexts, deduplication, and suppressions
+├── config.py                 # Configuration, key rotation, timeouts, and thresholds
+├── submission.jsonl          # 30-case canonical submission records
+├── judge_simulator.py        # Official challenge judge simulator and evaluation tool
+├── dataset/                  # Merchant, customer, trigger, and category datasets
+├── requirements.txt          # Python dependencies (fastapi, uvicorn, pydantic, httpx)
+├── .env.example              # Sample environment configuration
+└── README.md                 # Project documentation and submission details
 ```
 
-## Quickstart
+---
 
+## Required Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/v1/healthz` | Bot status, uptime, loaded context counts, and active LLM configuration |
+| `GET` | `/v1/metadata` | Team identity (`bot_champ`), model details, and architectural approach |
+| `POST` | `/v1/context` | Ingestion endpoint for categories, merchants, customers, and triggers |
+| `POST` | `/v1/tick` | Evaluates triggers and returns proactive WhatsApp messages (`actions`) |
+| `POST` | `/v1/reply` | Multi-turn conversational replies from merchants or customers |
+
+---
+
+## Quickstart & Local Execution
+
+### 1. Install Dependencies
 ```bash
-cd vera-submission
 pip install -r requirements.txt
-uvicorn bot:app --host 0.0.0.0 --port $PORT
 ```
 
-Validate everything locally:
-
+### 2. Configure Environment
+Create a `.env` file from `.env.example`:
 ```bash
-python -m pytest tests/ -q                 # 18/18 unit tests
-python scripts/mock_judge.py               # 36/36 lifecycle checks
-python scripts/validate_submission.py      # submission.jsonl hard-rule gate
-python scripts/gen_submission.py --live    # regenerate via Gemini Flash (optional)
+cp .env.example .env
+```
+Ensure your Gemini API key is configured:
+```bash
+GEMINI_API_KEYS=your_gemini_api_key_here
+GEMINI_MODEL=gemini-3.1-flash-lite
 ```
 
-## Before you submit
+### 3. Start the Backend Server
+```bash
+python3 -m uvicorn bot:app --host 0.0.0.0 --port 8000
+```
 
-1. Fill team identity: `TEAM_NAME`, `TEAM_MEMBERS`, `CONTACT_EMAIL`
-   (in `.env` / environment — served by `GET /v1/metadata`; defaults are
-   `«...»` placeholders).
-2. Set `GEMINI_API_KEYS` (2–3 comma-separated keys recommended).
-3. If the official challenge zip becomes available: adapt `schemas.py` only
-   (single wire-shape adapter point), re-run `gen_submission.py` against the
-   official canonical pairs, and run the official `judge_simulator.py`.
-   See the Provenance Note in `vera-submission/README.md`.
-# veera
+### 4. Run the Official Judge Simulator
+In a separate terminal:
+```bash
+python3 judge_simulator.py full_evaluation
+```
+This runs the full test suite against all 30 canonical test cases, scores the responses across all 5 evaluation dimensions, and generates `submission.jsonl`.
+
+---
+
+## Submission Details
+
+- **Deliverables**:
+  - `bot.py`
+  - `conversation_handlers.py`
+  - `submission.jsonl` (30 canonical test cases with `test_id`, `body`, `cta`, `send_as`, `suppression_key`, `rationale`)
+  - `README.md`
+  - **Public Backend URL** exposing the 5 endpoints listed above (pure HTTP backend, no frontend required)

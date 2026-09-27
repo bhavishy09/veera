@@ -28,3 +28,4 @@ ENV/
 
 # Project specific artifacts if needed
 scratch/
+results.json
