@@ -16,9 +16,9 @@ PORT = int(os.getenv("PORT", "8000"))
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
 # --- identity (fill before submission) ---
-TEAM_NAME = os.getenv("TEAM_NAME", "«YOUR TEAM NAME»")
-TEAM_MEMBERS = os.getenv("TEAM_MEMBERS", "«TEAM MEMBER NAMES»")
-CONTACT_EMAIL = os.getenv("CONTACT_EMAIL", "«CONTACT EMAIL»")
+TEAM_NAME = os.getenv("TEAM_NAME", "bot_champ")
+TEAM_MEMBERS = os.getenv("TEAM_MEMBERS", "bhavishya katariya")
+CONTACT_EMAIL = os.getenv("CONTACT_EMAIL", "bhavishyakatariya954@gmail.com")
 BOT_NAME = "Vera"
 VERSION = "1.0.0"
 
