@@ -899,6 +899,8 @@ class JudgeSimulator:
                 tid = p.get("trigger_id", "")
                 mid = p.get("merchant_id", "")
                 cid = p.get("customer_id")
+                merchant = self.dataset.merchants.get(mid, {})
+                trigger = self.dataset.triggers.get(tid, {})
 
                 print(f"\n{Colors.BOLD}{'='*60}{Colors.RESET}")
                 print(f"{Colors.YELLOW}[Test Case {test_id}]{Colors.RESET} Trigger: {tid} | Merchant: {mid}")
